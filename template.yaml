@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ai-chat
+
+  Workshop AI Assistant Lambda Function
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 30
+  Api:
+    Cors:
+      AllowMethods: "'POST, OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Workshop-Secret,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"  # Change to your domain in production
+
+Parameters:
+  OpenAIApiKey:
+    Type: String
+    Description: OpenAI API Key for chat completions
+    NoEcho: true
+    Default: ''
+  
+  WorkshopSecret:
+    Type: String
+    Description: Secret key for workshop authentication (create your own random string)
+    NoEcho: true
+    Default: 'lama'
+
+Resources:
+  # DynamoDB Table for storing chat data (analytics, caching, etc.)
+  ChatDataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-ChatData'
+      BillingMode: PAY_PER_REQUEST  # On-demand pricing (no provisioning needed)
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH   # Partition key
+        - AttributeName: sk
+          KeyType: RANGE  # Sort key
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true  # Auto-delete old records
+      Tags:
+        - Key: Name
+          Value: Workshop AI Chat Data
+
+  PostChatFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: lambda/
+      Handler: app.lambdaHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+          WORKSHOP_SECRET: !Ref WorkshopSecret
+          DYNAMODB_TABLE: !Ref ChatDataTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ChatDataTable
+      Events:
+        PostChat:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /
+            Method: post
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL - Add this to your frontend as VITE_LAMBDA_ENDPOINT"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/"
+  
+  DynamoDBTableName:
+    Description: "DynamoDB Table Name for chat data"
+    Value: !Ref ChatDataTable
+  
+  PostChatFunction:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt PostChatFunction.Arn
+    
+  PostChatFunctionIamRole:
+    Description: "Lambda IAM Role ARN"
+    Value: !GetAtt PostChatFunctionRole.Arn

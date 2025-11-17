@@ -1,0 +1,13 @@
+{
+  "name": "workshop-assistant-lambda",
+  "version": "1.0.0",
+  "description": "Workshop AI Assistant Lambda with DynamoDB",
+  "type": "module",
+  "main": "app.mjs",
+  "author": "Workshop Team",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  }
+}

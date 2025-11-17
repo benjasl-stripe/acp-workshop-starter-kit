@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workshop Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Workshop Assistant</h1>
+            <p>Ask me anything about the workshop!</p>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="welcome-message">
+                <p>👋 Hello! I'm your AI workshop assistant. How can I help you today?</p>
+            </div>
+        </div>
+        
+        <div class="input-container">
+            <textarea 
+                id="userInput" 
+                placeholder="Type your question here..." 
+                rows="3"
+            ></textarea>
+            <button id="sendButton" onclick="sendMessage()">
+                <span id="buttonText">Send</span>
+                <span id="buttonSpinner" class="spinner" style="display: none;">⏳</span>
+            </button>
+        </div>
+        
+        <div class="config-section">
+            <details>
+                <summary>⚙️ Configuration</summary>
+                <div class="config-content">
+                    <label>
+                        Lambda Endpoint:
+                        <input 
+                            type="text" 
+                            id="lambdaEndpoint" 
+                            placeholder="https://xxx.execute-api.us-west-2.amazonaws.com/Prod/"
+                        />
+                    </label>
+                    <label>
+                        Workshop Secret:
+                        <input 
+                            type="password" 
+                            id="workshopSecret" 
+                            placeholder="Your workshop secret"
+                        />
+                    </label>
+                    <button onclick="saveConfig()">Save Configuration</button>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+
