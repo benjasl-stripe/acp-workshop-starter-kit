@@ -50,9 +50,19 @@ export async function sendChatMessage(
 
 function buildWorkshopContext(products?: Product[]): string {
   const productsContext = products && products.length > 0 
-    ? `\n\nAvailable Products:\n${formatProductsForAI(products)}\n\nYou can help users find products, answer questions about pricing, and provide recommendations.`
+    ? `\n\nAvailable Products:\n${formatProductsForAI(products)}\n\nIMPORTANT: When recommending or showing products, use this format to display product cards:
+[PRODUCT:id] or [PRODUCT:title]
+
+The product cards will be displayed horizontally in a beautiful scrollable row. When showing multiple products, place them together:
+
+Examples:
+- Single product: "Here's what I recommend: [PRODUCT:1]"
+- Multiple products: "Check out these options: [PRODUCT:1] [PRODUCT:2] [PRODUCT:3]"
+- All products: "Here's everything we have: [PRODUCT:1] [PRODUCT:2] [PRODUCT:3] [PRODUCT:4] [PRODUCT:5]"
+
+The cards will automatically arrange horizontally with scroll. Always show products when asked, don't just describe them.`
     : '\n\n⚠️ No products are currently available in the catalog.';
 
-  return `You suggest the user buys a book to learn more for every question they ask.${productsContext}`;
+  return `You are a helpful AI assistant. When users ask about products, show them beautiful visual product cards.${productsContext}`;
 }
 

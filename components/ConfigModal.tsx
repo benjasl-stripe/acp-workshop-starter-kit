@@ -11,16 +11,18 @@ export default function ConfigModal({ onClose }: ConfigModalProps) {
   const [lambdaEndpoint, setLambdaEndpoint] = useState('');
   const [workshopSecret, setWorkshopSecret] = useState('');
   const [productsApiUrl, setProductsApiUrl] = useState('');
+  const [testMode, setTestMode] = useState(false);
 
   useEffect(() => {
     const config = getConfig();
     setLambdaEndpoint(config.lambdaEndpoint || '');
     setWorkshopSecret(config.workshopSecret || '');
     setProductsApiUrl(config.productsApiUrl || '');
+    setTestMode(config.testMode || false);
   }, []);
 
   const handleSave = () => {
-    saveConfig({ lambdaEndpoint, workshopSecret, productsApiUrl });
+    saveConfig({ lambdaEndpoint, workshopSecret, productsApiUrl, testMode });
     alert('Configuration saved! ✅');
     onClose();
   };
@@ -79,6 +81,32 @@ export default function ConfigModal({ onClose }: ConfigModalProps) {
             <p className="text-xs text-gray-500 mt-1">
               URL that returns a JSON list of products (updated every 15 minutes)
             </p>
+          </div>
+
+          <div className="border-t-2 border-gray-200 pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">
+                  🧪 Test Mode
+                </label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Generate random mock responses without calling API
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTestMode(!testMode)}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                  testMode ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                    testMode ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
         </div>
 

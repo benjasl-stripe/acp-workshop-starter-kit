@@ -42,23 +42,30 @@ export function formatProductsForAI(products: Product[]): string {
   }
 
   const productList = products.map((product, index) => {
+    const productId = product.id || index + 1;
     const parts = [
-      `${index + 1}. **${product.title}**`,
-      `   - Price: ${product.price}`,
+      `Product ID: ${productId}`,
+      `Title: **${product.title}**`,
+      `Price: ${product.price}`,
     ];
     
-    if (product.thumbnail) {
-      parts.push(`   - Image: ${product.thumbnail}`);
+    if (product.description) {
+      parts.push(`Description: ${product.description}`);
     }
     
-    // Add any additional properties
-    Object.keys(product).forEach(key => {
-      if (!['title', 'price', 'thumbnail'].includes(key)) {
-        parts.push(`   - ${key}: ${product[key]}`);
-      }
-    });
+    if (product.category) {
+      parts.push(`Category: ${product.category}`);
+    }
     
-    return parts.join('\n');
+    if (product.inStock !== undefined) {
+      parts.push(`In Stock: ${product.inStock ? 'Yes' : 'No'}`);
+    }
+    
+    if (product.rating) {
+      parts.push(`Rating: ${product.rating}/5 (${product.reviews || 0} reviews)`);
+    }
+    
+    return parts.join('\n   ');
   }).join('\n\n');
 
   return `Available Products (${products.length}):\n\n${productList}`;

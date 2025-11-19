@@ -8,6 +8,7 @@ import { sendChatMessage } from '@/lib/api';
 import { fetchProducts, formatProductsForAI, Product } from '@/lib/products';
 import { getConfig } from '@/lib/config';
 import ConfigModal from './ConfigModal';
+import MessageRenderer from './MessageRenderer';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -75,6 +76,24 @@ export default function ChatInterface() {
     loadProducts(); // Reload products after config change
   };
 
+  const generateMockResponse = (userMessage: string): string => {
+    const responses = [
+      "Here's a great product recommendation for you! [PRODUCT:PCA-001]",
+      "Check out these amazing options: [PRODUCT:AEP-002] [PRODUCT:TOME-003]",
+      "We have several products that might interest you: [PRODUCT:PCA-001] [PRODUCT:WIFC-004] [PRODUCT:REV-005]",
+      "This is a test response! Here's a random product: [PRODUCT:TOME-003]",
+      "In test mode! Here are some cool items: [PRODUCT:PCA-001] [PRODUCT:AEP-002]",
+      "🧪 Test Mode Active! Check this out: [PRODUCT:REV-005]",
+      "Here's what I found: [PRODUCT:WIFC-004] [PRODUCT:PCA-001]",
+      "Perfect! Take a look at these: [PRODUCT:AEP-002] [PRODUCT:TOME-003] [PRODUCT:REV-005]",
+      "I'd recommend starting with this one: [PRODUCT:WIFC-004]",
+      "Here's our full collection: [PRODUCT:PCA-001] [PRODUCT:AEP-002] [PRODUCT:TOME-003] [PRODUCT:WIFC-004] [PRODUCT:REV-005]",
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * responses.length);
+    return responses[randomIndex];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -89,17 +108,37 @@ export default function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const response = await sendChatMessage(newMessages, products);
+      const config = getConfig();
       
-      // Add assistant response
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          content: response.content,
-          cached: response.cached,
-        },
-      ]);
+      // Check if test mode is enabled
+      if (config.testMode) {
+        // Generate mock response with random delay
+        await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
+        
+        const mockContent = generateMockResponse(userMessage);
+        
+        setMessages([
+          ...newMessages,
+          {
+            role: 'assistant',
+            content: mockContent,
+            cached: false,
+          },
+        ]);
+      } else {
+        // Normal API call
+        const response = await sendChatMessage(newMessages, products);
+        
+        // Add assistant response
+        setMessages([
+          ...newMessages,
+          {
+            role: 'assistant',
+            content: response.content,
+            cached: response.cached,
+          },
+        ]);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to get response');
     } finally {
@@ -115,11 +154,18 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh] max-h-[800px]">
+    <div className="w-full px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-8 text-center">
-          <h1 className="text-4xl font-bold mb-2">🤖 AI Workshop Assistant</h1>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <h1 className="text-4xl font-bold">🤖 AI Workshop Assistant</h1>
+            {getConfig().testMode && (
+              <span className="text-xs bg-yellow-400 text-gray-900 px-3 py-1 rounded-full font-bold animate-pulse">
+                🧪 TEST MODE
+              </span>
+            )}
+          </div>
           <p className="text-lg opacity-90">Ask me anything about the workshop!</p>
           
           {/* Products Status Indicator */}
@@ -129,7 +175,7 @@ export default function ChatInterface() {
                 🔄 Loading products...
               </span>
             ) : products.length > 0 ? (
-              <span className="text-sm bg-green-500 bg-opacity-80 px-3 py-1 rounded-full">
+              <span className="text-sm bg-green-500 bg-opacity-80 px-4 py-2 rounded-full">
                 ✅ {products.length} product{products.length !== 1 ? 's' : ''} loaded
               </span>
             ) : getConfig().productsApiUrl ? (
@@ -163,6 +209,11 @@ export default function ChatInterface() {
               <p className="text-gray-700">
                 👋 Hello! I'm your AI workshop assistant. How can I help you today?
               </p>
+              {products.length > 0 && (
+                <p className="mt-3 text-sm text-gray-600">
+                  💡 Try asking: "What products do you have?" or "Show me your courses"
+                </p>
+              )}
             </div>
           )}
 
@@ -180,13 +231,8 @@ export default function ChatInterface() {
                 }`}
               >
                 {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm max-w-none">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeHighlight]}
-                    >
-                      {msg.content}
-                    </ReactMarkdown>
+                  <div>
+                    <MessageRenderer content={msg.content} products={products} />
                     {msg.cached && (
                       <div className="text-xs text-gray-500 mt-2">
                         ⚡ Cached response
