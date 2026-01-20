@@ -190,8 +190,8 @@ aws cloudwatch get-metric-statistics \
 - Try creating a new key
 
 ### Still getting test responses
-- Make sure you added the OpenAI code to `lambda/app.mjs`
-- See `lambda/ADD_OPENAI.md` for instructions
+- Make sure you added the OpenAI code to `ai-service/app.mjs`
+- See `ai-service/ADD_OPENAI.md` for instructions
 - Redeploy after adding the code
 
 ---
@@ -202,7 +202,7 @@ aws cloudwatch get-metric-statistics \
 - [ ] Build Lambda: `sam build`
 - [ ] Deploy with key: `sam deploy --parameter-overrides OpenAIApiKey=sk-...`
 - [ ] Verify deployment succeeded
-- [ ] Add OpenAI code to `lambda/app.mjs` (see `ADD_OPENAI.md`)
+- [ ] Add OpenAI code to `ai-service/app.mjs` (see `ADD_OPENAI.md`)
 - [ ] Rebuild and redeploy: `sam build && sam deploy`
 - [ ] Test from workshop frontend
 - [ ] Set spending limits in OpenAI
@@ -212,5 +212,5 @@ aws cloudwatch get-metric-statistics \
 
 **That's it!** Your AI chat is now fully configured and secure! 🎊
 
-For OpenAI integration code, see: `lambda/ADD_OPENAI.md`
+For OpenAI integration code, see: `ai-service/ADD_OPENAI.md`
 

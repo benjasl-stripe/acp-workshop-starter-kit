@@ -1,5 +1,5 @@
 {
-  "name": "merchant-backend",
+  "name": "merchant-service",
   "version": "1.0.0",
   "description": "Standalone merchant backend API for product management",
   "main": "server.js",
