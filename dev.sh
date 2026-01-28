@@ -84,6 +84,32 @@ echo "════════════════════════�
 setup_env "$ROOT_DIR/agent-service" "Agent Service"
 setup_env "$ROOT_DIR/merchant-service" "Merchant Service"
 
+# ============================================
+# Install Dependencies
+# ============================================
+
+echo ""
+echo "═══════════════════════════════════════════════════"
+echo "  📦 Installing Dependencies"
+echo "═══════════════════════════════════════════════════"
+
+install_deps() {
+    local service_dir="$1"
+    local service_name="$2"
+    
+    if [ ! -d "$service_dir/node_modules" ]; then
+        echo "📥 Installing $service_name dependencies..."
+        (cd "$service_dir" && npm install --silent)
+        echo "   ✅ $service_name dependencies installed"
+    else
+        echo "✅ $service_name dependencies already installed"
+    fi
+}
+
+install_deps "$ROOT_DIR/frontend" "Frontend"
+install_deps "$ROOT_DIR/agent-service" "Agent Service"
+install_deps "$ROOT_DIR/merchant-service" "Merchant Service"
+
 echo ""
 echo "🚀 Starting all services..."
 echo ""
