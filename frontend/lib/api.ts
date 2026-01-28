@@ -75,6 +75,13 @@ interface CheckoutResponse extends CheckoutState {}
 // Chat API (via Agent Service)
 // ============================================================================
 
+// Helper to extract merchant base URL from productsApiUrl
+function getMerchantUrl(config: Config): string | null {
+  if (!config.productsApiUrl) return null;
+  // Remove /api/products suffix to get base URL
+  return config.productsApiUrl.replace(/\/api\/products\/?$/, '');
+}
+
 export async function sendChatMessage(
   messages: Message[], 
   products?: Product[],
@@ -84,6 +91,9 @@ export async function sendChatMessage(
   
   // Use Agent Service for chat
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
+  
+  // Pass merchant URL for workshop mode (agent uses this for ACP calls)
+  const merchantUrl = getMerchantUrl(config);
   
   const response = await loggedFetch(`${agentUrl}/api/chat`, {
     method: 'POST',
@@ -95,6 +105,7 @@ export async function sendChatMessage(
       checkoutState: checkoutState || null,
       userEmail: config.userEmail || null,
       aiPersona: config.aiPersona || null,
+      merchantUrl: merchantUrl || null,
     }),
     acpEndpoint: 'Chat',
     acpFlow: 'Frontend → Agent',
@@ -127,11 +138,12 @@ export async function createCheckout(
 ): Promise<CheckoutResponse> {
   const config = getConfig();
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
+  const merchantUrl = getMerchantUrl(config);
   
   const response = await loggedFetch(`${agentUrl}/api/checkout/create`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items, buyer }),
+    body: JSON.stringify({ items, buyer, merchantUrl }),
     acpEndpoint: 'Create Checkout',
     acpFlow: 'Frontend → Agent',
   });
@@ -165,11 +177,12 @@ export async function updateCheckout(
 ): Promise<CheckoutResponse> {
   const config = getConfig();
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
+  const merchantUrl = getMerchantUrl(config);
   
   const response = await loggedFetch(`${agentUrl}/api/checkout/${checkoutId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
+    body: JSON.stringify({ ...updates, merchantUrl }),
     acpEndpoint: 'Update Checkout',
     acpFlow: 'Frontend → Agent',
   });
@@ -192,11 +205,12 @@ export async function completeCheckout(
 ): Promise<CheckoutResponse> {
   const config = getConfig();
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
+  const merchantUrl = getMerchantUrl(config);
   
   const response = await loggedFetch(`${agentUrl}/api/checkout/${checkoutId}/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ paymentToken }),
+    body: JSON.stringify({ paymentToken, merchantUrl }),
     acpEndpoint: 'Complete Checkout',
     acpFlow: 'Frontend → Agent',
   });
@@ -216,8 +230,9 @@ export async function completeCheckout(
 export async function getCheckout(checkoutId: string): Promise<CheckoutResponse> {
   const config = getConfig();
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
+  const merchantUrl = getMerchantUrl(config);
   
-  const response = await loggedFetch(`${agentUrl}/api/checkout/${checkoutId}`, {
+  const response = await loggedFetch(`${agentUrl}/api/checkout/${checkoutId}?merchantUrl=${encodeURIComponent(merchantUrl || '')}`, {
     acpEndpoint: 'Get Checkout',
     acpFlow: 'Frontend → Agent',
   });

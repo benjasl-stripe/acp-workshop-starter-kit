@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  stripe-proxy
+
+  Workshop Stripe Proxy Lambda Function
+  Proxies Stripe API calls for workshop participants via REST endpoints
+
+Globals:
+  Function:
+    Timeout: 30
+  Api:
+    Cors:
+      AllowMethods: "'GET, POST, OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Workshop-Secret,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Parameters:
+  StripeSecretKey:
+    Type: String
+    Description: Stripe Secret Key (sk_test_... or sk_live_...)
+    NoEcho: true
+    Default: ''
+  
+  StripePublishableKey:
+    Type: String
+    Description: Stripe Publishable Key (pk_test_... or pk_live_...)
+    Default: ''
+  
+  WorkshopSecret:
+    Type: String
+    Description: Secret key for workshop authentication (leave empty to disable)
+    NoEcho: true
+    Default: ''
+  
+  StripeApiVersion:
+    Type: String
+    Description: Stripe API version to use
+    Default: '2024-12-18.acacia'
+  
+  SptApiUrl:
+    Type: String
+    Description: SPT API endpoint URL (optional, uses default if not specified)
+    Default: ''
+  
+  SptNetworkId:
+    Type: String
+    Description: Network ID for SPT seller scoping
+    Default: 'internal'
+
+Resources:
+  StripeProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: app.lambdaHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+          STRIPE_PUBLISHABLE_KEY: !Ref StripePublishableKey
+          WORKSHOP_SECRET: !Ref WorkshopSecret
+          STRIPE_API_VERSION: !Ref StripeApiVersion
+          SPT_API_URL: !Ref SptApiUrl
+          SPT_NETWORK_ID: !Ref SptNetworkId
+      Events:
+        # GET /config - Return publishable key
+        GetConfig:
+          Type: Api
+          Properties:
+            Path: /config
+            Method: GET
+        
+        # POST /setup-intent - Create SetupIntent
+        CreateSetupIntent:
+          Type: Api
+          Properties:
+            Path: /setup-intent
+            Method: POST
+        
+        # POST /save-method - Save payment method
+        SaveMethod:
+          Type: Api
+          Properties:
+            Path: /save-method
+            Method: POST
+        
+        # GET /methods - List payment methods
+        GetMethods:
+          Type: Api
+          Properties:
+            Path: /methods
+            Method: GET
+        
+        # GET /has-method - Check if has payment method
+        HasMethod:
+          Type: Api
+          Properties:
+            Path: /has-method
+            Method: GET
+        
+        # POST /create-spt - Create Shared Payment Token
+        CreateSpt:
+          Type: Api
+          Properties:
+            Path: /create-spt
+            Method: POST
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL - Use this as STRIPE_PROXY_URL in your agent .env"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod"
+  
+  StripeProxyFunction:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt StripeProxyFunction.Arn
+    
+  StripeProxyFunctionIamRole:
+    Description: "Lambda IAM Role ARN"
+    Value: !GetAtt StripeProxyFunctionRole.Arn

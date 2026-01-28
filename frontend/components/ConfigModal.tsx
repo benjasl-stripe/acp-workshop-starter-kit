@@ -65,6 +65,7 @@ export default function ConfigModal({ onClose }: ConfigModalProps) {
   const [lambdaEndpoint, setLambdaEndpoint] = useState('');
   const [workshopSecret, setWorkshopSecret] = useState('');
   const [productsApiUrl, setProductsApiUrl] = useState('');
+  const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [aiPersona, setAiPersona] = useState('');
   const [testMode, setTestMode] = useState(false);
@@ -75,6 +76,7 @@ export default function ConfigModal({ onClose }: ConfigModalProps) {
     setLambdaEndpoint(config.lambdaEndpoint || '');
     setWorkshopSecret(config.workshopSecret || '');
     setProductsApiUrl(config.productsApiUrl || 'http://localhost:4000/api/products');
+    setStripePublishableKey(config.stripePublishableKey || '');
     setUserEmail(config.userEmail || '');
     setAiPersona(config.aiPersona || '');
     setTestMode(config.testMode || false);
@@ -85,7 +87,8 @@ export default function ConfigModal({ onClose }: ConfigModalProps) {
       agentServiceUrl,
       lambdaEndpoint, 
       workshopSecret, 
-      productsApiUrl, 
+      productsApiUrl,
+      stripePublishableKey,
       userEmail,
       aiPersona,
       testMode 
@@ -223,6 +226,30 @@ export default function ConfigModal({ onClose }: ConfigModalProps) {
                 placeholder="http://localhost:4000/api/products"
                 className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-600 text-gray-900"
               />
+            </div>
+          </CollapsibleSection>
+
+          {/* Stripe Section */}
+          <CollapsibleSection
+            title="Stripe"
+            icon="💳"
+            bgColor="bg-indigo-50"
+            textColor="text-indigo-800"
+          >
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Publishable Key
+              </label>
+              <input
+                type="text"
+                value={stripePublishableKey}
+                onChange={(e) => setStripePublishableKey(e.target.value)}
+                placeholder="pk_test_..."
+                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-600 text-gray-900 font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Stripe publishable key for payment collection (pk_test_...)
+              </p>
             </div>
           </CollapsibleSection>
 

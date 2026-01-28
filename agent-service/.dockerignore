@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Environment files (secrets should come from ECS/Secrets Manager)
+.env
+.env.*
+
+# Development files
+nodemon.json
+*.md
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+

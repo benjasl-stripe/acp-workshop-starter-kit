@@ -1,0 +1,13 @@
+{
+  "name": "workshop-stripe-proxy-lambda",
+  "version": "1.0.0",
+  "description": "Workshop Stripe Proxy Lambda - proxies Stripe API calls for workshop participants",
+  "type": "module",
+  "main": "app.mjs",
+  "author": "Workshop Team",
+  "license": "MIT",
+  "dependencies": {
+    "stripe": "^17.0.0"
+  }
+}
+

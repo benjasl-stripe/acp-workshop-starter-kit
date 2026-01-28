@@ -1,7 +1,7 @@
 /**
  * Chat Route with AI-Powered Function Calling
  * 
- * Handles AI chat by proxying to Lambda and executing ACP function calls
+ * Handles AI chat by calling OpenAI directly and executing ACP function calls
  */
 
 import express from 'express';
@@ -14,6 +14,7 @@ import {
 } from './checkout.js';
 import { createSPT, getCustomerPaymentMethods } from './payment.js';
 import { getPendingLogs } from '../lib/acp-call-logger.js';
+import { createChatCompletion } from '../lib/openai.js';
 
 const router = express.Router();
 
@@ -28,6 +29,9 @@ async function executeFunction(name, args, context) {
   console.log(`🔧 Executing function: ${name}`);
   console.log('   Arguments:', JSON.stringify(args, null, 2));
   
+  // Get merchantUrl from context for workshop mode
+  const merchantUrl = context.merchantUrl;
+  
   try {
     switch (name) {
       case 'create_checkout': {
@@ -38,7 +42,7 @@ async function executeFunction(name, args, context) {
         }));
         
         const buyer = args.buyer_email ? { email: args.buyer_email } : undefined;
-        const result = await createCheckout(items, buyer);
+        const result = await createCheckout(items, buyer, merchantUrl);
         
         console.log(`   ✅ Checkout created: ${result.id}`);
         return {
@@ -49,7 +53,7 @@ async function executeFunction(name, args, context) {
       }
       
       case 'get_checkout': {
-        const result = await getCheckout(args.checkout_id);
+        const result = await getCheckout(args.checkout_id, merchantUrl);
         console.log(`   ✅ Retrieved checkout: ${args.checkout_id}`);
         return {
           success: true,
@@ -81,7 +85,7 @@ async function executeFunction(name, args, context) {
           updates.fulfillmentOptionId = 'shipping_standard';
         }
         
-        const result = await updateCheckout(args.checkout_id, updates);
+        const result = await updateCheckout(args.checkout_id, updates, merchantUrl);
         console.log(`   ✅ Checkout updated: ${args.checkout_id}, status: ${result.status}`);
         return {
           success: true,
@@ -116,7 +120,7 @@ async function executeFunction(name, args, context) {
           }
           
           // Get checkout details to determine the amount for SPT
-          const checkout = await getCheckout(args.checkout_id);
+          const checkout = await getCheckout(args.checkout_id, merchantUrl);
           const totalAmount = checkout.totals?.find(t => t.type === 'total')?.amount || 10000;
           const currency = checkout.currency || 'usd';
           
@@ -126,7 +130,7 @@ async function executeFunction(name, args, context) {
           const spt = await createSPT(email, totalAmount, currency, args.checkout_id);
           console.log(`   🔐 SPT created: ${spt.token.substring(0, 30)}...`);
           
-          const result = await completeCheckout(args.checkout_id, spt.token);
+          const result = await completeCheckout(args.checkout_id, spt.token, merchantUrl);
           console.log(`   ✅ Checkout completed: ${args.checkout_id}`);
           
           return {
@@ -146,7 +150,7 @@ async function executeFunction(name, args, context) {
       }
       
       case 'cancel_checkout': {
-        const result = await cancelCheckout(args.checkout_id);
+        const result = await cancelCheckout(args.checkout_id, undefined, merchantUrl);
         console.log(`   ✅ Checkout cancelled: ${args.checkout_id}`);
         return {
           success: true,
@@ -233,13 +237,6 @@ async function executeFunction(name, args, context) {
 
 /**
  * Sanitize messages to remove incomplete tool call sequences
- * 
- * When a function call fails, the conversation may contain an assistant message
- * with tool_calls but no corresponding tool response. OpenAI requires that every
- * assistant message with tool_calls is followed by tool messages for each call.
- * 
- * This function removes any assistant messages with tool_calls that don't have
- * matching tool responses.
  */
 function sanitizeMessages(messages) {
   const sanitized = [];
@@ -249,9 +246,7 @@ function sanitizeMessages(messages) {
     
     // If this is an assistant message with tool_calls
     if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
-      // Check if all tool_calls have corresponding tool responses after this message
       const toolCallIds = new Set(msg.tool_calls.map(tc => tc.id));
-      let allResponded = true;
       
       // Look for tool messages that follow this assistant message
       for (let j = i + 1; j < messages.length && messages[j].role === 'tool'; j++) {
@@ -262,14 +257,13 @@ function sanitizeMessages(messages) {
       
       // If there are unresponded tool calls, skip this message
       if (toolCallIds.size > 0) {
-        console.log(`   ⚠️ Removing incomplete tool_calls message (missing: ${Array.from(toolCallIds).join(', ')})`);
+        console.log(`   ⚠️ Removing incomplete tool_calls message`);
         continue;
       }
     }
     
     // If this is a tool message, check if its corresponding assistant message was kept
     if (msg.role === 'tool') {
-      // Find the preceding assistant message
       let hasMatchingAssistant = false;
       for (let j = sanitized.length - 1; j >= 0; j--) {
         if (sanitized[j].role === 'assistant' && sanitized[j].tool_calls) {
@@ -278,14 +272,13 @@ function sanitizeMessages(messages) {
             break;
           }
         }
-        // Stop looking if we hit a non-assistant/non-tool message
         if (sanitized[j].role !== 'assistant' && sanitized[j].role !== 'tool') {
           break;
         }
       }
       
       if (!hasMatchingAssistant) {
-        console.log(`   ⚠️ Removing orphan tool message (${msg.tool_call_id})`);
+        console.log(`   ⚠️ Removing orphan tool message`);
         continue;
       }
     }
@@ -306,28 +299,31 @@ function sanitizeMessages(messages) {
  */
 router.post('/', async (req, res) => {
   try {
-    const { messages, checkoutState, userEmail, aiPersona } = req.body;
+    const { messages, checkoutState, userEmail, aiPersona, merchantUrl, lambdaEndpoint } = req.body;
     
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Messages array required' });
     }
     
-    // Sanitize messages: Remove any assistant messages with tool_calls
-    // that don't have corresponding tool responses
-    // This prevents issues from previous failed function call sequences
+    // Sanitize messages
     const sanitizedMessages = sanitizeMessages(messages);
+    
+    // Get merchant URL from request or use default
+    const effectiveMerchantUrl = merchantUrl || process.env.MERCHANT_API_URL || 'http://localhost:4000';
+    
+    // Get Lambda endpoint from request or use default
+    const effectiveLambdaEndpoint = lambdaEndpoint || process.env.LAMBDA_ENDPOINT;
     
     console.log('\n📨 Chat request received');
     console.log('   Messages:', messages.length, sanitizedMessages.length !== messages.length ? `(sanitized to ${sanitizedMessages.length})` : '');
     console.log('   Checkout:', checkoutState?.id || 'none');
     console.log('   User:', userEmail || 'anonymous');
-    console.log('   AI Persona:', aiPersona ? `${aiPersona.substring(0, 50)}...` : 'default');
+    console.log('   Merchant:', effectiveMerchantUrl);
+    console.log('   Lambda:', effectiveLambdaEndpoint || 'not set');
     
-    const LAMBDA_ENDPOINT = process.env.LAMBDA_ENDPOINT;
-    const WORKSHOP_SECRET = process.env.WORKSHOP_SECRET;
-    
-    if (!LAMBDA_ENDPOINT || !WORKSHOP_SECRET) {
-      console.log('⚠️ Lambda not configured, using fallback');
+    // Check if Lambda AI service is configured
+    if (!effectiveLambdaEndpoint) {
+      console.log('⚠️ Lambda endpoint not configured, using fallback');
       return res.json({
         content: generateFallbackResponse(messages[messages.length - 1]?.content || ''),
         checkoutState,
@@ -338,8 +334,7 @@ router.post('/', async (req, res) => {
     // Fetch products for context
     let products = [];
     try {
-      const MERCHANT_API_URL = process.env.MERCHANT_API_URL || 'http://localhost:4000';
-      const productsResponse = await fetch(`${MERCHANT_API_URL}/api/products`);
+      const productsResponse = await fetch(`${effectiveMerchantUrl}/api/products`);
       if (productsResponse.ok) {
         const data = await productsResponse.json();
         products = data.products || [];
@@ -348,10 +343,11 @@ router.post('/', async (req, res) => {
       console.log('Could not fetch products:', err.message);
     }
     
-    // Context for function execution
+    // Context for function execution (includes merchantUrl for workshop mode)
     const context = {
       userEmail,
-      checkoutState
+      checkoutState,
+      merchantUrl: effectiveMerchantUrl
     };
     
     // Track the current checkout state and user email
@@ -359,7 +355,7 @@ router.post('/', async (req, res) => {
     let showPaymentSetup = false;
     let updatedEmail = null;
     
-    // Conversation messages for the loop (use sanitized messages)
+    // Conversation messages for the loop
     let conversationMessages = [...sanitizedMessages];
     
     // Maximum function call iterations to prevent infinite loops
@@ -369,51 +365,32 @@ router.post('/', async (req, res) => {
     // Function calling loop
     while (iterations < MAX_ITERATIONS) {
       iterations++;
-      console.log(`\n🔄 Lambda call iteration ${iterations}`);
+      console.log(`\n🔄 OpenAI call iteration ${iterations}`);
       
       try {
-        const lambdaResponse = await fetch(LAMBDA_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Workshop-Secret': WORKSHOP_SECRET,
-          },
-          body: JSON.stringify({
-            messages: conversationMessages,
-            enableFunctionCalling: true,
-            checkoutState: currentCheckout,
-            products,
-            workshopContext: aiPersona || null,
-            currentPage: 'Agent Service',
-            currentUrl: 'http://localhost:3001',
-          }),
+        const response = await createChatCompletion(conversationMessages, {
+          checkoutState: currentCheckout,
+          products,
+          aiPersona,
+          lambdaEndpoint: effectiveLambdaEndpoint
         });
         
-        if (!lambdaResponse.ok) {
-          const errorText = await lambdaResponse.text();
-          console.error('Lambda error:', lambdaResponse.status, errorText);
-          throw new Error(`Lambda error: ${lambdaResponse.status}`);
-        }
-        
-        const data = await lambdaResponse.json();
-        console.log('   Response type:', data.type);
+        console.log('   Response type:', response.type);
         
         // Check if AI wants to call functions
-        if (data.type === 'tool_calls' && data.tool_calls) {
+        if (response.type === 'tool_calls' && response.tool_calls) {
           console.log('   Tool calls received:');
-          data.tool_calls.forEach(tc => {
+          response.tool_calls.forEach(tc => {
             console.log(`      - ${tc.name} (id: ${tc.id})`);
           });
           
           // Add assistant message with tool calls to conversation
-          console.log('   Assistant message tool_calls IDs:', 
-            data.assistant_message?.tool_calls?.map(tc => tc.id) || 'none');
-          conversationMessages.push(data.assistant_message);
+          conversationMessages.push(response.assistant_message);
           
           // Execute each function and collect results
           const toolResults = [];
           
-          for (const toolCall of data.tool_calls) {
+          for (const toolCall of response.tool_calls) {
             const result = await executeFunction(toolCall.name, toolCall.arguments, context);
             
             toolResults.push({
@@ -435,10 +412,11 @@ router.post('/', async (req, res) => {
             // Check if email was updated
             if (result.action === 'update_email' && result.email) {
               updatedEmail = result.email;
+              context.userEmail = result.email;
             }
           }
           
-          // Add tool result messages to conversation BEFORE sending to Lambda
+          // Add tool result messages to conversation
           for (const toolResult of toolResults) {
             conversationMessages.push({
               role: 'tool',
@@ -447,111 +425,14 @@ router.post('/', async (req, res) => {
             });
           }
           
-          // Send tool results back to Lambda
-          console.log('📤 Sending tool results to Lambda:');
-          console.log('   Tool results:', toolResults.map(tr => ({ id: tr.tool_call_id, result: tr.result?.success })));
-          console.log('   Conversation now has', conversationMessages.length, 'messages');
-          console.log('   Last 2 messages:', conversationMessages.slice(-2).map(m => m.role));
+          // Continue the loop to get the final response
+          continue;
           
-          // Debug: Log all assistant messages with tool_calls
-          console.log('   📋 Messages being sent to Lambda:');
-          conversationMessages.forEach((msg, i) => {
-            if (msg.role === 'assistant' && msg.tool_calls) {
-              console.log(`      [${i}] assistant with tool_calls:`, msg.tool_calls.map(tc => tc.id));
-            } else if (msg.role === 'tool') {
-              console.log(`      [${i}] tool response for:`, msg.tool_call_id);
-            } else {
-              console.log(`      [${i}] ${msg.role}`);
-            }
-          });
-          
-          const continueResponse = await fetch(LAMBDA_ENDPOINT, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Workshop-Secret': WORKSHOP_SECRET,
-            },
-            body: JSON.stringify({
-              messages: conversationMessages,
-              enableFunctionCalling: true,
-              checkoutState: currentCheckout,
-              products,
-              workshopContext: aiPersona || null,
-              currentPage: 'Agent Service',
-              currentUrl: 'http://localhost:3001',
-            }),
-          });
-          
-          if (!continueResponse.ok) {
-            throw new Error(`Lambda continue error: ${continueResponse.status}`);
-          }
-          
-          const continueData = await continueResponse.json();
-          
-          // If we got a text response, we're done
-          if (continueData.type === 'text') {
-            console.log('   ✅ Got final text response');
-            return res.json({
-              content: continueData.content,
-              checkoutState: currentCheckout,
-              showPaymentSetup,
-              updatedEmail,
-              acpLogs: getPendingLogs()
-            });
-          }
-          
-          // If we got more tool calls, we need to execute them too
-          if (continueData.type === 'tool_calls' && continueData.tool_calls) {
-            console.log('   🔄 Got more tool calls:', continueData.tool_calls.map(tc => tc.name).join(', '));
-            
-            // Add the new assistant message with tool_calls
-            conversationMessages.push(continueData.assistant_message);
-            
-            // Execute these new tool calls
-            const newToolResults = [];
-            for (const toolCall of continueData.tool_calls) {
-              const result = await executeFunction(toolCall.name, toolCall.arguments, context);
-              
-              newToolResults.push({
-                tool_call_id: toolCall.id,
-                result
-              });
-              
-              // Update checkout state if returned
-              if (result.checkout) {
-                currentCheckout = result.checkout;
-                context.checkoutState = currentCheckout;
-              }
-              
-              // Check if we need to show payment setup
-              if (result.action === 'show_payment_setup') {
-                showPaymentSetup = true;
-              }
-              
-              // Check if email was updated
-              if (result.action === 'update_email' && result.email) {
-                updatedEmail = result.email;
-              }
-            }
-            
-            // Add the tool results to conversation
-            for (const toolResult of newToolResults) {
-              conversationMessages.push({
-                role: 'tool',
-                tool_call_id: toolResult.tool_call_id,
-                content: JSON.stringify(toolResult.result)
-              });
-            }
-            
-            // Continue the loop to get the final response
-            continue;
-          }
-          
-        } else if (data.type === 'text') {
+        } else if (response.type === 'text') {
           // Got a text response, we're done
           console.log('   ✅ Text response received');
           return res.json({
-            content: data.content,
+            content: response.content,
             checkoutState: currentCheckout,
             showPaymentSetup,
             updatedEmail,
@@ -560,7 +441,7 @@ router.post('/', async (req, res) => {
         }
         
       } catch (err) {
-        console.error('Lambda call failed:', err.message);
+        console.error('OpenAI call failed:', err.message);
         return res.json({
           content: generateFallbackResponse(messages[messages.length - 1]?.content || ''),
           checkoutState: currentCheckout,
@@ -587,7 +468,7 @@ router.post('/', async (req, res) => {
 });
 
 /**
- * Generate fallback response when Lambda is not available
+ * Generate fallback response when Lambda AI service is not available
  */
 function generateFallbackResponse(message) {
   const lowerMessage = message.toLowerCase();
@@ -595,18 +476,18 @@ function generateFallbackResponse(message) {
   if (lowerMessage.includes('buy') || lowerMessage.includes('purchase') || lowerMessage.includes('order')) {
     return `I'd love to help you make a purchase! However, the AI service is currently unavailable.
 
-Please try again in a moment, or configure the Lambda endpoint in the settings.`;
+Please ensure LAMBDA_ENDPOINT is set in the agent's .env file.`;
   }
   
   if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-    return `Hello! 👋 Welcome to our bookstore!
+    return `Hello! 👋 Welcome to our store!
 
-I can help you browse and purchase books. The AI service is currently not configured, but you can still explore our products.`;
+I can help you browse and purchase products. The AI service is currently not configured - please set LAMBDA_ENDPOINT in the agent's .env file.`;
   }
   
   return `I'm your AI shopping assistant! 
 
-To use the full checkout functionality, please ensure the Lambda endpoint is configured in your settings.`;
+To use the full checkout functionality, please ensure LAMBDA_ENDPOINT is configured.`;
 }
 
 export default router;

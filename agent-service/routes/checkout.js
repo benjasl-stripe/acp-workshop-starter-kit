@@ -2,6 +2,7 @@
  * Checkout Route
  * 
  * Manages ACP checkout sessions with the merchant backend
+ * Supports per-request merchantUrl for workshop mode
  */
 
 import express from 'express';
@@ -9,7 +10,27 @@ import { loggedACPFetch } from '../lib/acp-call-logger.js';
 
 const router = express.Router();
 
-const MERCHANT_API_URL = process.env.MERCHANT_API_URL || 'http://localhost:4000';
+// Read default merchant URL dynamically (after dotenv has loaded)
+function getDefaultMerchantUrl() {
+  return process.env.MERCHANT_API_URL || 'http://localhost:4000';
+}
+
+/**
+ * Get merchant URL from request or use default
+ */
+function getMerchantUrl(req) {
+  // Check header first (for workshop mode)
+  const headerUrl = req.headers['x-merchant-url'];
+  if (headerUrl) return headerUrl;
+  
+  // Check body for merchantUrl
+  if (req.body?.merchantUrl) return req.body.merchantUrl;
+  
+  // Check query param
+  if (req.query?.merchantUrl) return req.query.merchantUrl;
+  
+  return getDefaultMerchantUrl();
+}
 
 /**
  * POST /api/checkout/create
@@ -18,18 +39,20 @@ const MERCHANT_API_URL = process.env.MERCHANT_API_URL || 'http://localhost:4000'
 router.post('/create', async (req, res) => {
   try {
     const { items, buyer, fulfillmentAddress } = req.body;
+    const merchantUrl = getMerchantUrl(req);
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Items array required' });
     }
     
     console.log('🛒 Creating checkout via ACP:', items);
+    console.log('   Merchant URL:', merchantUrl);
     
     const body = { items };
     if (buyer) body.buyer = buyer;
     if (fulfillmentAddress) body.fulfillment_address = fulfillmentAddress;
     
-    const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts`, {
+    const response = await loggedACPFetch(`${merchantUrl}/checkouts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -60,11 +83,12 @@ router.post('/create', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const merchantUrl = getMerchantUrl(req);
     
     console.log('📋 Getting checkout:', id);
     
     const response = await loggedACPFetch(
-      `${MERCHANT_API_URL}/checkouts/${id}`,
+      `${merchantUrl}/checkouts/${id}`,
       {},
       { endpoint: 'GET /checkouts/:id', flow: 'Agent → Merchant' }
     );
@@ -91,6 +115,7 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { items, buyer, fulfillmentAddress, fulfillmentOptionId } = req.body;
+    const merchantUrl = getMerchantUrl(req);
     
     console.log('✏️ Updating checkout:', id);
     
@@ -100,7 +125,7 @@ router.put('/:id', async (req, res) => {
     if (fulfillmentAddress) updates.fulfillment_address = fulfillmentAddress;
     if (fulfillmentOptionId) updates.fulfillment_option_id = fulfillmentOptionId;
     
-    const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts/${id}`, {
+    const response = await loggedACPFetch(`${merchantUrl}/checkouts/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -133,6 +158,7 @@ router.post('/:id/complete', async (req, res) => {
   try {
     const { id } = req.params;
     const { paymentToken, buyer } = req.body;
+    const merchantUrl = getMerchantUrl(req);
     
     if (!paymentToken) {
       return res.status(400).json({ error: 'Payment token (SPT) required' });
@@ -148,7 +174,7 @@ router.post('/:id/complete', async (req, res) => {
     };
     if (buyer) body.buyer = buyer;
     
-    const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts/${id}/complete`, {
+    const response = await loggedACPFetch(`${merchantUrl}/checkouts/${id}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -180,10 +206,11 @@ router.post('/:id/cancel', async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
+    const merchantUrl = getMerchantUrl(req);
     
     console.log('❌ Cancelling checkout:', id);
     
-    const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts/${id}/cancel`, {
+    const response = await loggedACPFetch(`${merchantUrl}/checkouts/${id}/cancel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason }),
@@ -209,16 +236,18 @@ router.post('/:id/cancel', async (req, res) => {
 
 // ============================================================================
 // Exported Functions for use by chat.js (AI function calling)
+// These accept merchantUrl as a parameter for workshop mode
 // ============================================================================
 
 /**
  * Create a new checkout session
  */
-export async function createCheckout(items, buyer) {
+export async function createCheckout(items, buyer, merchantUrl) {
+  const url = merchantUrl || getDefaultMerchantUrl();
   const body = { items };
   if (buyer) body.buyer = buyer;
   
-  const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts`, {
+  const response = await loggedACPFetch(`${url}/checkouts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -236,9 +265,10 @@ export async function createCheckout(items, buyer) {
 /**
  * Get checkout by ID
  */
-export async function getCheckout(checkoutId) {
+export async function getCheckout(checkoutId, merchantUrl) {
+  const url = merchantUrl || getDefaultMerchantUrl();
   const response = await loggedACPFetch(
-    `${MERCHANT_API_URL}/checkouts/${checkoutId}`,
+    `${url}/checkouts/${checkoutId}`,
     {},
     { endpoint: 'GET /checkouts/:id', flow: 'Agent → Merchant' }
   );
@@ -254,14 +284,15 @@ export async function getCheckout(checkoutId) {
 /**
  * Update checkout with shipping address or fulfillment option
  */
-export async function updateCheckout(checkoutId, updates) {
+export async function updateCheckout(checkoutId, updates, merchantUrl) {
+  const url = merchantUrl || getDefaultMerchantUrl();
   const body = {};
   if (updates.items) body.items = updates.items;
   if (updates.buyer) body.buyer = updates.buyer;
   if (updates.fulfillmentAddress) body.fulfillment_address = updates.fulfillmentAddress;
   if (updates.fulfillmentOptionId) body.fulfillment_option_id = updates.fulfillmentOptionId;
   
-  const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts/${checkoutId}`, {
+  const response = await loggedACPFetch(`${url}/checkouts/${checkoutId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -279,8 +310,9 @@ export async function updateCheckout(checkoutId, updates) {
 /**
  * Complete checkout with SPT payment token
  */
-export async function completeCheckout(checkoutId, paymentToken) {
-  const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts/${checkoutId}/complete`, {
+export async function completeCheckout(checkoutId, paymentToken, merchantUrl) {
+  const url = merchantUrl || getDefaultMerchantUrl();
+  const response = await loggedACPFetch(`${url}/checkouts/${checkoutId}/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -303,8 +335,9 @@ export async function completeCheckout(checkoutId, paymentToken) {
 /**
  * Cancel a checkout
  */
-export async function cancelCheckout(checkoutId, reason) {
-  const response = await loggedACPFetch(`${MERCHANT_API_URL}/checkouts/${checkoutId}/cancel`, {
+export async function cancelCheckout(checkoutId, reason, merchantUrl) {
+  const url = merchantUrl || getDefaultMerchantUrl();
+  const response = await loggedACPFetch(`${url}/checkouts/${checkoutId}/cancel`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
@@ -320,4 +353,3 @@ export async function cancelCheckout(checkoutId, reason) {
 }
 
 export default router;
-

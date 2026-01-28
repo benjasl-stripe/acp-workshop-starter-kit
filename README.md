@@ -8,41 +8,39 @@ A demonstration of AI-powered shopping with Shared Payment Tokens (SPT) using th
 ┌──────────────┐     ┌──────────────────────┐     ┌─────────────────┐
 │   Frontend   │────►│   Agent Service      │────►│ Merchant Service│
 │   (Next.js)  │◄────│   (Express.js)       │◄────│ (ACP endpoints) │
-└──────────────┘     └──────────┬───────────┘     └─────────────────┘
-                               │                            
-                     ┌─────────┴─────────┐
-                     │                   │
-              ┌──────▼──────┐    ┌───────▼───────┐
-              │ AI Service  │    │    Stripe     │
-              │ (AWS Lambda)│    │  (Payments)   │
-              └─────────────┘    └───────────────┘
+└──────────────┘     └─────────┬───────────┘      └────────┬────────┘
+                               │                           │
+                     ┌─────────┴─────────┐                 │
+                     │                   │                 │
+              ┌──────▼──────┐    ┌───────▼───────┐  ┌──────▼────────┐
+              │ AI Service  │    │    Stripe     │  │    Stripe     │
+              │ (AWS Lambda)│    │ (Agent Acct)  │  │(Merchant Acct)│
+              └─────────────┘    └───────────────┘  └───────────────┘
 ```
 
 ## 📁 Project Structure
 
 ```
-acp-demo/
-├── frontend/           # Next.js frontend application
-│   ├── app/           # Next.js App Router
-│   ├── components/    # React components
-│   ├── lib/           # Utility functions & API client
-│   └── package.json
+acp-starter-kit/
 │
-├── agent-service/      # Agent backend (Express.js)
-│   ├── routes/        # API routes (chat, checkout, payment)
-│   ├── lib/           # Logging utilities
-│   └── package.json
+├── frontend/               # Next.js frontend application
+│   ├── app/                # Next.js App Router
+│   ├── components/         # React components
+│   └── lib/                # Utility functions & API client
 │
-├── merchant-service/   # Merchant backend (Express.js)
-│   ├── routes/        # ACP endpoints (checkouts, products)
-│   ├── lib/           # Product store
-│   └── package.json
-│
-├── ai-service/         # AWS Lambda (AI brain)
-│   ├── app.mjs        # Lambda handler with OpenAI
-│   └── package.json
-│
-└── template.yaml       # SAM/CloudFormation template
+├── agent-service/          # Agent backend (Express.js)
+│   ├── routes/             # API routes (chat, checkout, payment)
+│   └──  lib/               # Logging utilities
+│   │
+│   └── ai-service/         # AWS Lambda (AI brain)
+│       └── app.mjs         # Lambda handler with OpenAI
+│       
+├── merchant-service/       # Merchant backend (Express.js)
+    ├── routes/             # ACP endpoints (checkouts, products)
+    └── lib/                # Product store
+
+
+
 ```
 
 ## 🚀 Quick Start
@@ -58,9 +56,6 @@ cd agent-service && npm install && cd ..
 
 # Merchant Service
 cd merchant-service && npm install && cd ..
-
-# AI Service (Lambda)
-cd ai-service && npm install && cd ..
 ```
 
 ### 2. Configure Environment
@@ -78,13 +73,6 @@ PORT=3001
 ```bash
 STRIPE_SECRET_KEY=sk_test_...
 PORT=4000
-```
-
-### 3. Deploy AI Service (Lambda)
-
-```bash
-sam build
-sam deploy --parameter-overrides OpenAIApiKey=sk-your-openai-key
 ```
 
 ### 4. Start Services
@@ -125,8 +113,6 @@ SPT enables secure cross-account payments:
 | Frontend | 3000 | Next.js UI |
 | Agent Service | 3001 | AI orchestration, SPT creation |
 | Merchant Service | 4000 | ACP endpoints, payment processing |
-| AI Service | Lambda | Natural language understanding |
-
 ---
 
 **Built with Next.js, Express, AWS Lambda, and Stripe**

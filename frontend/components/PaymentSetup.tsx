@@ -195,20 +195,30 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
   useEffect(() => {
     const init = async () => {
       try {
-        // Get Stripe config
-        const config = await getStripeConfig();
+        // Get Stripe publishable key from config first, then fallback to agent
+        const appConfig = getConfig();
+        let publishableKey = appConfig.stripePublishableKey;
         
-        if (!config.publishableKey) {
-          setError('Stripe is not configured. Add STRIPE_PUBLISHABLE_KEY to Agent Service.');
+        // If not in config, try to get from agent service
+        if (!publishableKey) {
+          try {
+            const stripeConfig = await getStripeConfig();
+            publishableKey = stripeConfig.publishableKey || '';
+          } catch (err) {
+            console.log('Could not fetch Stripe config from agent');
+          }
+        }
+        
+        if (!publishableKey) {
+          setError('Stripe not configured. Add Stripe Publishable Key in Settings.');
           setIsLoading(false);
           return;
         }
         
         // Load Stripe
-        setStripePromise(loadStripe(config.publishableKey));
+        setStripePromise(loadStripe(publishableKey));
         
         // Fetch existing payment methods
-        const appConfig = getConfig();
         const userEmail = email || appConfig.userEmail;
         if (userEmail) {
           try {

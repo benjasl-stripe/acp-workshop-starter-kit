@@ -9,6 +9,9 @@ export interface Config {
   // Merchant Backend
   productsApiUrl: string;
   
+  // Stripe (publishable key is safe for frontend)
+  stripePublishableKey: string;
+  
   // User info for checkout
   userEmail: string;
   
@@ -33,6 +36,7 @@ export function getConfig(): Config {
       lambdaEndpoint: '',
       workshopSecret: '',
       productsApiUrl: '',
+      stripePublishableKey: '',
       userEmail: '',
       aiPersona: '',
       testMode: false,
@@ -44,6 +48,7 @@ export function getConfig(): Config {
     lambdaEndpoint: localStorage.getItem('lambdaEndpoint') || '',
     workshopSecret: localStorage.getItem('workshopSecret') || '',
     productsApiUrl: localStorage.getItem('productsApiUrl') || 'http://localhost:4000/api/products',
+    stripePublishableKey: localStorage.getItem('stripePublishableKey') || '',
     userEmail: localStorage.getItem('userEmail') || '',
     aiPersona: localStorage.getItem('aiPersona') || '',
     testMode: localStorage.getItem('testMode') === 'true',

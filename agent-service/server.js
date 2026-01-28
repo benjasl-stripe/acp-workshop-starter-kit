@@ -3,7 +3,7 @@
  * 
  * Orchestrates the ACP checkout flow:
  * 1. Receives chat messages from frontend
- * 2. Calls Lambda for AI responses
+ * 2. Calls OpenAI directly for AI responses with function calling
  * 3. Detects purchase intent and manages checkouts via ACP
  * 4. Creates Stripe Shared Payment Tokens (SPT) for payments
  */
@@ -63,8 +63,8 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
-    lambdaConfigured: !!process.env.LAMBDA_ENDPOINT,
-    stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
+    lambdaEndpoint: process.env.LAMBDA_ENDPOINT || null,
+    stripeProxyUrl: process.env.STRIPE_PROXY_URL || 'http://localhost:3002',
     merchantUrl: process.env.MERCHANT_API_URL || 'http://localhost:4000',
   });
 });
@@ -91,6 +91,15 @@ app.listen(PORT, () => {
   console.log(`💬 Chat API: http://localhost:${PORT}/api/chat`);
   console.log(`🛒 Checkout API: http://localhost:${PORT}/api/checkout`);
   console.log(`💳 Payment API: http://localhost:${PORT}/api/payment`);
+  
+  // Log environment configuration
+  console.log(`\n📋 Environment Configuration:`);
+  console.log(`   LAMBDA_ENDPOINT: ${process.env.LAMBDA_ENDPOINT || '❌ Not set'}`);
+  console.log(`   STRIPE_PROXY_URL: ${process.env.STRIPE_PROXY_URL || '❌ Not set (defaulting to http://localhost:3002)'}`);
+  console.log(`   MERCHANT_API_URL: ${process.env.MERCHANT_API_URL || '❌ Not set (defaulting to http://localhost:4000)'}`);
+  console.log(`   WORKSHOP_SECRET: ${process.env.WORKSHOP_SECRET ? '✅ Set' : '❌ Not set'}`);
+  console.log(`   PORT: ${PORT}`);
+  
   console.log(`\nPress Ctrl+C to stop\n`);
 });
 
