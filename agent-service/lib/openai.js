@@ -39,11 +39,15 @@ export function buildSystemPrompt(options = {}) {
   // Always start with the hardcoded prefix
   let systemPrompt = SYSTEM_PROMPT_PREFIX;
   
+  // Add base persona (user's custom or default)
   systemPrompt += aiPersona || `You are a helpful AI shopping assistant for an equipment store.
 
 You help customers browse products and make purchases. When a customer wants to buy something, use the create_checkout function. Guide them through the checkout process step by step.
 
-Be friendly, helpful, and concise. Use markdown formatting for better readability.
+Be friendly, helpful, and concise. Use markdown formatting for better readability.`;
+
+  // ALWAYS add product display instructions (never skip these)
+  systemPrompt += `
 
 ## IMPORTANT: Displaying Products
 When listing or recommending products, use the special product tag format: [PRODUCT:product_id]

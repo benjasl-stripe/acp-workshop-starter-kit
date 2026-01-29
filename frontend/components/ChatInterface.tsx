@@ -21,6 +21,72 @@ interface Message {
   content: string;
 }
 
+// ============================================================================
+// Chat Persistence (localStorage)
+// ============================================================================
+
+const STORAGE_KEYS = {
+  messages: 'acpChatMessages',
+  checkout: 'acpCheckoutState',
+  hasPaymentMethod: 'acpHasPaymentMethod',
+};
+
+function loadPersistedChat(): {
+  messages: Message[];
+  checkoutState: CheckoutState | null;
+  hasPaymentMethod: boolean;
+} {
+  if (typeof window === 'undefined') {
+    return { messages: [], checkoutState: null, hasPaymentMethod: false };
+  }
+
+  try {
+    const messagesJson = localStorage.getItem(STORAGE_KEYS.messages);
+    const checkoutJson = localStorage.getItem(STORAGE_KEYS.checkout);
+    const hasPaymentStr = localStorage.getItem(STORAGE_KEYS.hasPaymentMethod);
+
+    return {
+      messages: messagesJson ? JSON.parse(messagesJson) : [],
+      checkoutState: checkoutJson ? JSON.parse(checkoutJson) : null,
+      hasPaymentMethod: hasPaymentStr === 'true',
+    };
+  } catch (err) {
+    console.error('Failed to load persisted chat:', err);
+    return { messages: [], checkoutState: null, hasPaymentMethod: false };
+  }
+}
+
+function savePersistedChat(
+  messages: Message[],
+  checkoutState: CheckoutState | null,
+  hasPaymentMethod: boolean
+): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(messages));
+    if (checkoutState) {
+      localStorage.setItem(STORAGE_KEYS.checkout, JSON.stringify(checkoutState));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.checkout);
+    }
+    localStorage.setItem(STORAGE_KEYS.hasPaymentMethod, hasPaymentMethod ? 'true' : 'false');
+  } catch (err) {
+    console.error('Failed to save chat:', err);
+  }
+}
+
+function clearPersistedChat(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEYS.messages);
+  localStorage.removeItem(STORAGE_KEYS.checkout);
+  localStorage.removeItem(STORAGE_KEYS.hasPaymentMethod);
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -36,6 +102,7 @@ export default function ChatInterface() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isUpdatingCheckout, setIsUpdatingCheckout] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -67,6 +134,29 @@ export default function ChatInterface() {
     const config = getConfig();
     setUserEmail(config.userEmail || '');
   }, []);
+
+  // Load persisted chat on mount
+  useEffect(() => {
+    if (!mounted) return;
+
+    const persisted = loadPersistedChat();
+    if (persisted.messages.length > 0) {
+      setMessages(persisted.messages);
+    }
+    if (persisted.checkoutState) {
+      setCheckoutState(persisted.checkoutState);
+    }
+    if (persisted.hasPaymentMethod) {
+      setHasPaymentMethod(persisted.hasPaymentMethod);
+    }
+    setHasLoadedFromStorage(true);
+  }, [mounted]);
+
+  // Persist chat whenever state changes (only after initial load to prevent race condition)
+  useEffect(() => {
+    if (!mounted || !hasLoadedFromStorage) return;
+    savePersistedChat(messages, checkoutState, hasPaymentMethod);
+  }, [messages, checkoutState, hasPaymentMethod, mounted, hasLoadedFromStorage]);
 
   // Fetch products function
   const loadProducts = async () => {
@@ -232,27 +322,28 @@ export default function ChatInterface() {
     setHasPaymentMethod(false);
   };
 
-  const formatStatus = (status: string) => {
-    const statusMap: Record<string, string> = {
-      'not_ready_for_payment': '🟡 Needs Info',
-      'ready_for_payment': '🟢 Ready to Pay',
-      'in_progress': '⏳ Processing',
-      'completed': '✅ Complete',
-      'canceled': '❌ Cancelled',
-    };
-    return statusMap[status] || status;
+  const clearChat = () => {
+    setMessages([]);
+    setCheckoutState(null);
+    setHasPaymentMethod(false);
+    setError(null);
+    setShowPaymentSetup(false);
+    setShowAddressForm(false);
+    clearPersistedChat();
   };
 
-  const getStatusColor = (status: string) => {
-    const colorMap: Record<string, string> = {
-      'not_ready_for_payment': 'bg-yellow-500',
-      'ready_for_payment': 'bg-green-500',
-      'in_progress': 'bg-blue-500',
-      'completed': 'bg-emerald-600',
-      'canceled': 'bg-red-500',
-    };
-    return colorMap[status] || 'bg-gray-500';
+  // Status configuration - single source of truth for status display
+  const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    'not_ready_for_payment': { label: '🟡 Needs Info', color: 'bg-yellow-500' },
+    'ready_for_payment': { label: '🟢 Ready to Pay', color: 'bg-green-500' },
+    'in_progress': { label: '⏳ Processing', color: 'bg-blue-500' },
+    'completed': { label: '✅ Complete', color: 'bg-emerald-600' },
+    'canceled': { label: '❌ Cancelled', color: 'bg-red-500' },
   };
+
+  function getStatusInfo(status: string): { label: string; color: string } {
+    return STATUS_CONFIG[status] || { label: status, color: 'bg-gray-500' };
+  }
 
   const getPlaceholder = () => {
     if (checkoutState?.status === 'not_ready_for_payment') {
@@ -301,10 +392,10 @@ export default function ChatInterface() {
               )}
 
               {checkoutState && (
-                <div className={`text-xs ${getStatusColor(checkoutState.status)} px-2 py-1 rounded-full flex items-center gap-1`}>
-                  <span>🛒 {formatStatus(checkoutState.status)}</span>
+                <div className={`text-xs ${getStatusInfo(checkoutState.status).color} px-2 py-1 rounded-full flex items-center gap-1`}>
+                  <span>🛒 {getStatusInfo(checkoutState.status).label}</span>
                   {(checkoutState.status === 'completed' || checkoutState.status === 'canceled') && (
-                    <button 
+                    <button
                       onClick={clearCheckout}
                       className="ml-1 bg-white bg-opacity-30 px-1.5 rounded hover:bg-opacity-50"
                     >
@@ -312,6 +403,17 @@ export default function ChatInterface() {
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* Clear Chat button - shown when there are messages */}
+              {messages.length > 0 && (
+                <button
+                  onClick={clearChat}
+                  className="text-xs bg-red-500 bg-opacity-80 px-2 py-1 rounded-full hover:bg-opacity-100 transition-all"
+                  title="Clear all messages and reset checkout"
+                >
+                  🗑️ Clear Session
+                </button>
               )}
             </div>
           )}
