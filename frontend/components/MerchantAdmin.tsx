@@ -45,14 +45,26 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
 
   const getMerchantUrl = () => {
     const config = getConfig();
-    return config.productsApiUrl?.replace('/api/products', '') || 'http://localhost:4000';
+    alert('DEBUG: productsApiUrl = ' + JSON.stringify(config.productsApiUrl));
+    if (!config.productsApiUrl) {
+      return null;
+    }
+    return config.productsApiUrl.replace('/api/products', '');
   };
 
   const fetchStatus = useCallback(async () => {
+    const merchantUrl = getMerchantUrl();
+    if (!merchantUrl) {
+      setProducts([]);
+      setSales(null);
+      setError(null);
+      return;
+    }
+    
     try {
       const [productsRes, salesRes] = await Promise.all([
-        fetch(`${getMerchantUrl()}/api/products/simulate/status`),
-        fetch(`${getMerchantUrl()}/api/products/sales`),
+        fetch(`${merchantUrl}/api/products/simulate/status`),
+        fetch(`${merchantUrl}/api/products/sales`),
       ]);
       
       if (productsRes.ok) {
@@ -223,8 +235,22 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto">
+        {/* No URL Configured Message */}
+        {!getMerchantUrl() && (
+          <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+            <div className="text-4xl mb-3">⚙️</div>
+            <div className="text-gray-300 text-sm font-medium mb-2">No Product API Configured</div>
+            <div className="text-gray-500 text-xs mb-4">
+              Set your Product API URL in the config panel to manage products here.
+            </div>
+            <div className="text-gray-600 text-[10px] bg-gray-800 px-3 py-2 rounded font-mono">
+              Settings → Product API URL
+            </div>
+          </div>
+        )}
+        
         {/* Products Tab */}
-        {activeTab === 'products' && products.map((product) => (
+        {getMerchantUrl() && activeTab === 'products' && products.map((product) => (
           <div key={product.id} className="p-3 border-b border-gray-800">
             {/* Product Title */}
             <div className="flex items-center gap-2 mb-2">
@@ -297,7 +323,7 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
         ))}
 
         {/* Sales Tab */}
-        {activeTab === 'sales' && (
+        {getMerchantUrl() && activeTab === 'sales' && (
           <div className="p-3">
             {/* Sales Summary */}
             {sales && (
