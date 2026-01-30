@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import productsRouter from './routes/products.js';
 import healthRouter from './routes/health.js';
 import checkoutsRouter from './routes/checkouts.js';
+import catalogRouter from './routes/catalog.js';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,7 @@ app.use((req, res, next) => {
 app.use('/api/products', productsRouter);
 app.use('/api/health', healthRouter);
 app.use('/checkouts', checkoutsRouter); // ACP Checkout endpoints
+app.use('/api', catalogRouter); // Dynamic catalog routes: /api/{json-filename}
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -75,6 +77,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n🚀 Merchant Backend running on http://localhost:${PORT}`);
   console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
+  console.log(`📂 JSON Catalogs: http://localhost:${PORT}/api/{filename} (e.g., /api/skis for lib/skis.json)`);
   console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`🛒 ACP Checkouts: http://localhost:${PORT}/checkouts`);
   console.log(`\nPress Ctrl+C to stop\n`);

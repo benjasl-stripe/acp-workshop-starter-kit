@@ -43,17 +43,22 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
   const [actionLog, setActionLog] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'products' | 'sales'>('products');
 
-  const getMerchantUrl = () => {
+  // Get the products API URL (e.g., http://localhost:4000/api/skis)
+  const getProductsUrl = () => {
     const config = getConfig();
-    if (!config.productsApiUrl) {
-      return null;
-    }
-    return config.productsApiUrl.replace('/api/products', '');
+    return config.productsApiUrl || null;
+  };
+  
+  // Get the catalog base URL for admin operations
+  // e.g., http://localhost:4000/api/skis -> use as base for /status, /price, /stock, etc.
+  const getCatalogBaseUrl = () => {
+    return getProductsUrl();
   };
 
   const fetchStatus = useCallback(async () => {
-    const merchantUrl = getMerchantUrl();
-    if (!merchantUrl) {
+    const catalogUrl = getCatalogBaseUrl();
+    
+    if (!catalogUrl) {
       setProducts([]);
       setSales(null);
       setError(null);
@@ -61,23 +66,44 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
     }
     
     try {
-      const [productsRes, salesRes] = await Promise.all([
-        fetch(`${merchantUrl}/api/products/simulate/status`),
-        fetch(`${merchantUrl}/api/products/sales`),
-      ]);
+      // Fetch products with status info from the catalog /status endpoint
+      const statusRes = await fetch(`${catalogUrl}/status`);
       
-      if (productsRes.ok) {
-        const data = await productsRes.json();
-        setProducts(data.products || []);
-        setError(null);
+      if (statusRes.ok) {
+        const data = await statusRes.json();
+        if (data.products) {
+          setProducts(data.products.map((p: any) => ({
+            id: p.id,
+            title: p.title || p.id,
+            price: p.price,
+            originalPrice: p.originalPrice || p.price,
+            priceChanged: p.priceChanged || false,
+            stock: p.stock ?? 10,
+            inStock: p.inStock ?? true,
+          })));
+          setError(null);
+        }
       } else {
-        setError('Failed to fetch products');
+        // Fallback: try fetching from the base URL directly
+        const productsRes = await fetch(catalogUrl);
+        if (productsRes.ok) {
+          const data = await productsRes.json();
+          const productsList = data.products || (Array.isArray(data) ? data : []);
+          setProducts(productsList.map((p: any) => ({
+            id: p.id || p._id,
+            title: p.title || p.name || p.id,
+            price: p.price,
+            originalPrice: p.price,
+            priceChanged: false,
+            stock: p.stock ?? 10,
+            inStock: p.inStock ?? true,
+          })));
+          setError(null);
+        } else {
+          setError('Failed to fetch products');
+        }
       }
-      
-      if (salesRes.ok) {
-        const salesData = await salesRes.json();
-        setSales(salesData);
-      }
+      setSales(null); // Sales tracking not available for JSON catalogs
     } catch (err: any) {
       setError(err.message || 'Connection failed');
     }
@@ -97,9 +123,12 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
   };
 
   const handlePriceChange = async (productId: string, newPrice: number) => {
+    const catalogUrl = getCatalogBaseUrl();
+    if (!catalogUrl) return;
+    
     setIsLoading(true);
     try {
-      const response = await fetch(`${getMerchantUrl()}/api/products/simulate/price-change`, {
+      const response = await fetch(`${catalogUrl}/price`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId, newPrice }),
@@ -108,6 +137,8 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
       if (data.success) {
         addLog(`💰 Price: ${data.product.title.substring(0, 20)}... $${data.product.oldPrice} → $${data.product.newPrice}`);
         fetchStatus();
+      } else {
+        addLog(`❌ ${data.error || 'Failed to update price'}`);
       }
     } catch (err: any) {
       addLog(`❌ Error: ${err.message}`);
@@ -116,9 +147,12 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
   };
 
   const handleStockChange = async (productId: string, stock: number) => {
+    const catalogUrl = getCatalogBaseUrl();
+    if (!catalogUrl) return;
+    
     setIsLoading(true);
     try {
-      const response = await fetch(`${getMerchantUrl()}/api/products/simulate/stock-change`, {
+      const response = await fetch(`${catalogUrl}/stock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId, stock }),
@@ -127,6 +161,8 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
       if (data.success) {
         addLog(`📦 Stock: ${data.product.title.substring(0, 20)}... ${data.product.oldStock} → ${data.product.newStock}`);
         fetchStatus();
+      } else {
+        addLog(`❌ ${data.error || 'Failed to update stock'}`);
       }
     } catch (err: any) {
       addLog(`❌ Error: ${err.message}`);
@@ -135,9 +171,12 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
   };
 
   const handleSellOut = async (productId: string) => {
+    const catalogUrl = getCatalogBaseUrl();
+    if (!catalogUrl) return;
+    
     setIsLoading(true);
     try {
-      const response = await fetch(`${getMerchantUrl()}/api/products/simulate/sell-out`, {
+      const response = await fetch(`${catalogUrl}/sellout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId }),
@@ -146,6 +185,8 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
       if (data.success) {
         addLog(`🔴 SOLD OUT: ${data.product.title.substring(0, 25)}...`);
         fetchStatus();
+      } else {
+        addLog(`❌ ${data.error || 'Failed to sell out'}`);
       }
     } catch (err: any) {
       addLog(`❌ Error: ${err.message}`);
@@ -154,15 +195,20 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
   };
 
   const handleReset = async () => {
+    const catalogUrl = getCatalogBaseUrl();
+    if (!catalogUrl) return;
+    
     setIsLoading(true);
     try {
-      const response = await fetch(`${getMerchantUrl()}/api/products/simulate/reset`, {
+      const response = await fetch(`${catalogUrl}/reset`, {
         method: 'POST',
       });
       const data = await response.json();
       if (data.success) {
         addLog('🔄 All products reset to original state');
         fetchStatus();
+      } else {
+        addLog(`❌ ${data.error || 'Failed to reset'}`);
       }
     } catch (err: any) {
       addLog(`❌ Error: ${err.message}`);
@@ -235,7 +281,7 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto">
         {/* No URL Configured Message */}
-        {!getMerchantUrl() && (
+        {!getCatalogBaseUrl() && (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
             <div className="text-4xl mb-3">⚙️</div>
             <div className="text-gray-300 text-sm font-medium mb-2">No Product API Configured</div>
@@ -249,7 +295,7 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
         )}
         
         {/* Products Tab */}
-        {getMerchantUrl() && activeTab === 'products' && products.map((product) => (
+        {getCatalogBaseUrl() && activeTab === 'products' && products.map((product) => (
           <div key={product.id} className="p-3 border-b border-gray-800">
             {/* Product Title */}
             <div className="flex items-center gap-2 mb-2">
@@ -322,7 +368,7 @@ export default function MerchantAdmin({ isOpen, onToggle }: MerchantAdminProps) 
         ))}
 
         {/* Sales Tab */}
-        {getMerchantUrl() && activeTab === 'sales' && (
+        {getCatalogBaseUrl() && activeTab === 'sales' && (
           <div className="p-3">
             {/* Sales Summary */}
             {sales && (

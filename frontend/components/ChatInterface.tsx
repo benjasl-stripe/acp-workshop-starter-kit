@@ -94,8 +94,8 @@ export default function ChatInterface() {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [showPaymentSetup, setShowPaymentSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Products are populated from LLM responses only (not fetched directly from API)
   const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(false);
   const [checkoutState, setCheckoutState] = useState<CheckoutState | null>(null);
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -158,7 +158,7 @@ export default function ChatInterface() {
     savePersistedChat(messages, checkoutState, hasPaymentMethod);
   }, [messages, checkoutState, hasPaymentMethod, mounted, hasLoadedFromStorage]);
 
-  // Fetch products function
+  // Fetch products for count display (product cards only shown when LLM mentions them)
   const loadProducts = async () => {
     const config = getConfig();
     if (!config.productsApiUrl) {
@@ -166,23 +166,18 @@ export default function ChatInterface() {
       return;
     }
 
-    setProductsLoading(true);
     try {
       const fetchedProducts = await fetchProducts(config.productsApiUrl);
       setProducts(fetchedProducts);
     } catch (err) {
       console.error('Error loading products:', err);
       setProducts([]);
-    } finally {
-      setProductsLoading(false);
     }
   };
 
-  // Load products on mount
+  // Load products on mount for count display
   useEffect(() => {
     loadProducts();
-    const interval = setInterval(() => loadProducts(), 15 * 60 * 1000);
-    return () => clearInterval(interval);
   }, []);
   
   const handleConfigClose = () => {
@@ -280,7 +275,8 @@ export default function ChatInterface() {
 
     try {
       // AI-driven chat flow - Agent Service handles all ACP calls via function calling
-      const response = await sendChatMessage(newMessages, products, checkoutState);
+      // Products are fetched by the agent from the configured API, not passed from frontend
+      const response = await sendChatMessage(newMessages, undefined, checkoutState);
       
       // Update checkout state if changed
       if (response.checkoutState) {
@@ -296,6 +292,11 @@ export default function ChatInterface() {
       if (response.updatedEmail) {
         setUserEmail(response.updatedEmail);
         saveConfig({ userEmail: response.updatedEmail });
+      }
+      
+      // Update products from agent response (for rendering [PRODUCT:id] tags)
+      if (response.products && response.products.length > 0) {
+        setProducts(response.products);
       }
       
       // Show AI response

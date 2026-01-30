@@ -66,6 +66,7 @@ interface ChatResponse {
   checkoutState?: CheckoutState;
   showPaymentSetup?: boolean;
   updatedEmail?: string;
+  products?: Array<any>;
   acpLogs?: Array<any>;
 }
 
@@ -78,8 +79,14 @@ interface CheckoutResponse extends CheckoutState {}
 // Helper to extract merchant base URL from productsApiUrl
 function getMerchantUrl(config: Config): string | null {
   if (!config.productsApiUrl) return null;
-  // Remove /api/products suffix to get base URL
-  return config.productsApiUrl.replace(/\/api\/products\/?$/, '');
+  // Extract base URL by removing the path after the port/domain
+  try {
+    const url = new URL(config.productsApiUrl);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    // If URL parsing fails, try to strip common suffixes
+    return config.productsApiUrl.replace(/\/api\/.*$/, '');
+  }
 }
 
 export async function sendChatMessage(
@@ -106,6 +113,7 @@ export async function sendChatMessage(
       userEmail: config.userEmail || null,
       aiPersona: config.aiPersona || null,
       merchantUrl: merchantUrl || null,
+      productsApiUrl: config.productsApiUrl || null,
     }),
     acpEndpoint: 'Chat',
     acpFlow: 'Frontend → Agent',

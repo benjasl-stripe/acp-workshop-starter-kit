@@ -299,7 +299,7 @@ function sanitizeMessages(messages) {
  */
 router.post('/', async (req, res) => {
   try {
-    const { messages, checkoutState, userEmail, aiPersona, merchantUrl, lambdaEndpoint } = req.body;
+    const { messages, checkoutState, userEmail, aiPersona, merchantUrl, productsApiUrl, lambdaEndpoint } = req.body;
     
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Messages array required' });
@@ -319,6 +319,7 @@ router.post('/', async (req, res) => {
     console.log('   Checkout:', checkoutState?.id || 'none');
     console.log('   User:', userEmail || 'anonymous');
     console.log('   Merchant:', effectiveMerchantUrl);
+    console.log('   Products URL:', productsApiUrl || '❌ NOT SET');
     console.log('   Lambda:', effectiveLambdaEndpoint || 'not set');
     
     // Check if Lambda AI service is configured
@@ -332,15 +333,19 @@ router.post('/', async (req, res) => {
     }
     
     // Fetch products for context
+    // Only fetch products if productsApiUrl is explicitly configured (no fallback to default)
     let products = [];
-    if (effectiveMerchantUrl) {
+    const effectiveProductsUrl = productsApiUrl || null;
+    
+    if (effectiveProductsUrl) {
       try {
-        const productsResponse = await fetch(`${effectiveMerchantUrl}/api/products`);
+        console.log(`   📦 Fetching products from ${effectiveProductsUrl}`);
+        const productsResponse = await fetch(effectiveProductsUrl);
         if (productsResponse.ok) {
           const data = await productsResponse.json();
           // Support both { products: [] } and { data: [] } formats
           products = Array.isArray(data) ? data : (data.products || data.data || []);
-          console.log(`   📦 Fetched ${products.length} products from ${effectiveMerchantUrl}`);
+          console.log(`   ✅ Fetched ${products.length} products`);
         } else {
           console.log(`   ⚠️ Products API returned ${productsResponse.status}`);
         }
@@ -348,7 +353,17 @@ router.post('/', async (req, res) => {
         console.log('   ❌ Could not fetch products:', err.message);
       }
     } else {
-      console.log('   ⚠️ No merchant URL configured - no products available');
+      console.log('   ⚠️ No products URL configured - no products available');
+    }
+    
+    // Guard: If no products available, bypass AI and return static message
+    if (products.length === 0) {
+      console.log('   🚫 No products configured - bypassing AI');
+      return res.json({
+        content: "No products configured yet.",
+        checkoutState,
+        acpLogs: getPendingLogs()
+      });
     }
     
     // Context for function execution (includes merchantUrl for workshop mode)
@@ -444,6 +459,7 @@ router.post('/', async (req, res) => {
             checkoutState: currentCheckout,
             showPaymentSetup,
             updatedEmail,
+            products, // Include products for frontend to use with [PRODUCT:id] tags
             acpLogs: getPendingLogs()
           });
         }

@@ -26,10 +26,12 @@ export function isOpenAIConfigured() {
 // ============================================================================
 
 // Hardcoded prefix - cannot be changed by frontend users
-const SYSTEM_PROMPT_PREFIX = `CRITICAL RULES:
-1. ONLY recommend products from the "Available Products" section below. If a product is not in that list, you DO NOT have it.
-2. NEVER invent, make up, or guess products. If the list is empty, say "I couldn't find any products available right now."
-3. Be honest - if you have no products to show, say so plainly.
+const SYSTEM_PROMPT_PREFIX = `CRITICAL RULES - YOU MUST FOLLOW THESE:
+1. Check the "Available Products" section below FIRST before responding about products.
+2. ONLY say "No products have been added yet" if the Available Products section explicitly says "**NONE**". If there are ANY products listed (even 1), do NOT say "no products".
+3. If the user asks for products you don't have (e.g. kids boots when you only have adult boots), say something like "I don't have that specific type, but here's what I do have:" and show the available products.
+4. NEVER list, recommend, or mention specific products unless they appear in the Available Products list.
+5. NEVER make up product names, categories, or prices.
 
 `;
 
@@ -80,12 +82,27 @@ ${checkoutState.status === 'completed' ? '- 🎉 Order complete!' : ''}
   // Add product catalog section - always include to make it clear what's available
   if (products && products.length > 0) {
     systemPrompt += `\n\n## Available Products (${products.length} items)\n`;
+    systemPrompt += `Use the product descriptions to help answer customer questions about features, suitability, and recommendations.\n\n`;
     products.forEach(p => {
       const productId = p.id || p._id;
-      systemPrompt += `- **${productId}**: ${p.title} - $${p.price}\n`;
+      const price = p.price;
+      const currency = p.currency || 'USD';
+      const description = p.description || '';
+      const category = p.category || '';
+      const brand = p.brand || '';
+      const stock = p.stock ?? (p.inStock ? 'In Stock' : 'Out of Stock');
+      const inStock = p.inStock !== false && (p.stock === undefined || p.stock > 0);
+      
+      systemPrompt += `### ${productId}: ${p.title}\n`;
+      systemPrompt += `- **Price**: $${price} ${currency}\n`;
+      if (brand) systemPrompt += `- **Brand**: ${brand}\n`;
+      if (category) systemPrompt += `- **Category**: ${category}\n`;
+      systemPrompt += `- **Stock**: ${inStock ? `${stock} available` : 'OUT OF STOCK'}\n`;
+      if (description) systemPrompt += `- **Description**: ${description}\n`;
+      systemPrompt += `\n`;
     });
   } else {
-    systemPrompt += `\n\n## Available Products\nNone - no products found.\n`;
+    systemPrompt += `\n\n## Available Products\n**NONE** - The product catalog is empty. You MUST tell the user "No products have been added yet" and nothing else about products.\n`;
   }
 
   return systemPrompt;
