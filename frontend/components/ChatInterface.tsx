@@ -386,11 +386,18 @@ export default function ChatInterface() {
                 </span>
               )}
 
-              {hasPaymentMethod && (
-                <span className="text-xs bg-blue-500 bg-opacity-80 px-2 py-1 rounded-full">
-                  💳 Card saved
-                </span>
-              )}
+              {/* Add Card / Card Saved button */}
+              <button
+                onClick={() => setShowPaymentSetup(true)}
+                className={`text-xs px-2 py-1 rounded-full transition-all ${
+                  hasPaymentMethod 
+                    ? 'bg-blue-500 bg-opacity-80 hover:bg-opacity-100' 
+                    : 'bg-yellow-400 text-gray-900 font-bold hover:bg-yellow-300'
+                }`}
+                title={hasPaymentMethod ? 'Add another card' : 'Add a payment method'}
+              >
+                {hasPaymentMethod ? '💳 Card saved' : '💳 Add Card'}
+              </button>
 
               {checkoutState && (
                 <div className={`text-xs ${getStatusInfo(checkoutState.status).color} px-2 py-1 rounded-full flex items-center gap-1`}>
