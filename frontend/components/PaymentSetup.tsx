@@ -37,72 +37,13 @@ const cardElementOptions = {
   hidePostalCode: false,
 };
 
-// Get card brand emoji/icon
-function getCardIcon(brand: string): string {
-  const icons: Record<string, string> = {
-    visa: '💳 Visa',
-    mastercard: '💳 Mastercard',
-    amex: '💳 Amex',
-    discover: '💳 Discover',
-    diners: '💳 Diners',
-    jcb: '💳 JCB',
-    unionpay: '💳 UnionPay',
-  };
-  return icons[brand.toLowerCase()] || `💳 ${brand}`;
-}
-
-// Saved cards list component
-function SavedCardsList({ 
-  cards, 
-  onSelect, 
-  onAddNew 
-}: { 
-  cards: SavedPaymentMethod[]; 
-  onSelect: (id: string) => void;
-  onAddNew: () => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-gray-600 mb-2">
-        Select a saved card or add a new one:
-      </p>
-      
-      {cards.map((card) => (
-        <button
-          key={card.id}
-          onClick={() => onSelect(card.id)}
-          className="w-full flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-left"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">{getCardIcon(card.brand)}</span>
-            <div>
-              <span className="font-medium text-gray-800">
-                •••• {card.last4}
-              </span>
-              <span className="text-sm text-gray-500 ml-2">
-                Exp {card.expMonth.toString().padStart(2, '0')}/{card.expYear.toString().slice(-2)}
-              </span>
-            </div>
-          </div>
-          <span className="text-purple-600 font-medium">Use this →</span>
-        </button>
-      ))}
-      
-      <button
-        onClick={onAddNew}
-        className="w-full flex items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-gray-600 hover:text-purple-600"
-      >
-        <span className="text-xl">+</span>
-        <span className="font-medium">Add new card</span>
-      </button>
-    </div>
-  );
-}
-
 // Inner form component that uses Stripe hooks
 function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
-  const stripe = useStripe();
-  const elements = useElements();
+  // TODO: Use the useStripe() and useElements() hooks
+  // These hooks give you access to the Stripe object and Elements instance
+  const stripe = null;    // Replace with: useStripe();
+  const elements = null;  // Replace with: useElements();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -113,7 +54,10 @@ function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
       return;
     }
     
-    const cardElement = elements.getElement(CardElement);
+    // TODO: Get the CardElement from elements
+    // Hint: Use elements.getElement(CardElement)
+    const cardElement = null; // Replace with: elements.getElement(CardElement);
+    
     if (!cardElement) {
       setError('Card element not found');
       return;
@@ -123,11 +67,16 @@ function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
     setError(null);
     
     try {
-      // Create a PaymentMethod from the card
-      const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-      });
+      // TODO: Create a PaymentMethod using stripe.createPaymentMethod()
+      // This sends card details directly to Stripe (never touches your server)
+      // 
+      // const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+      //   type: 'card',
+      //   card: cardElement,
+      // });
+      
+      const pmError = { message: 'TODO: Implement createPaymentMethod' };
+      const paymentMethod = null;
       
       if (pmError) {
         setError(pmError.message || 'Failed to process card');
@@ -135,12 +84,14 @@ function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
       }
       
       if (paymentMethod) {
-        // Save to our backend
-        const config = getConfig();
-        const userEmail = email || config.userEmail;
-        if (userEmail) {
-          await savePaymentMethod(userEmail, paymentMethod.id);
-        }
+        // TODO: Save the payment method to the Agent backend
+        // The Agent stores the payment method ID for creating SPTs later
+        //
+        // const config = getConfig();
+        // const userEmail = email || config.userEmail;
+        // if (userEmail) {
+        //   await savePaymentMethod(userEmail, paymentMethod.id);
+        // }
         
         onSuccess(paymentMethod.id);
       }
@@ -189,13 +140,11 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
-  const [showAddNew, setShowAddNew] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       try {
-        // Get Stripe publishable key from config first, then fallback to agent
+        // Get Stripe publishable key from config
         const appConfig = getConfig();
         let publishableKey = appConfig.stripePublishableKey;
         
@@ -215,22 +164,9 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
           return;
         }
         
-        // Load Stripe
-        setStripePromise(loadStripe(publishableKey));
-        
-        // Fetch existing payment methods
-        const userEmail = email || appConfig.userEmail;
-        if (userEmail) {
-          try {
-            const result = await getPaymentMethods(userEmail);
-            if (result.paymentMethods && result.paymentMethods.length > 0) {
-              setSavedCards(result.paymentMethods);
-            }
-          } catch (err) {
-            // No saved cards, that's fine
-            console.log('No saved payment methods found');
-          }
-        }
+        // TODO: Load Stripe with the publishable key
+        // Hint: Use loadStripe(publishableKey)
+        setStripePromise(null); // Replace with: setStripePromise(loadStripe(publishableKey));
         
       } catch (err: any) {
         setError(err.message || 'Failed to initialize payment');
@@ -241,11 +177,6 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
     
     init();
   }, [email]);
-
-  // Handle selecting an existing card
-  const handleSelectCard = (paymentMethodId: string) => {
-    onSuccess(paymentMethodId);
-  };
 
   if (isLoading) {
     return (
@@ -278,61 +209,25 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
     return (
       <div className="bg-white p-6 rounded-2xl shadow-lg">
         <div className="text-center text-gray-600">
-          Unable to load payment form
+          Unable to load payment form. Complete the TODOs in PaymentSetup.tsx!
         </div>
       </div>
     );
   }
 
-  // Show saved cards if available and not adding new
-  if (savedCards.length > 0 && !showAddNew) {
-    return (
-      <div className="bg-white p-6 rounded-2xl shadow-lg">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">💳 Payment Method</h3>
-        
-        <SavedCardsList 
-          cards={savedCards} 
-          onSelect={handleSelectCard}
-          onAddNew={() => setShowAddNew(true)}
-        />
-        
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={onCancel}
-            className="px-6 bg-gray-300 text-gray-700 font-bold py-2 rounded-lg hover:bg-gray-400 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-        
-        <p className="text-xs text-gray-500 mt-4 text-center">
-          🔒 Secured by Stripe
-        </p>
-      </div>
-    );
-  }
-
-  // Show add new card form
+  // TODO: Wrap SetupForm with the Elements provider
+  // The Elements provider gives child components access to Stripe
   return (
     <div className="bg-white p-6 rounded-2xl shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-gray-800">💳 Add Payment Method</h3>
-        {savedCards.length > 0 && (
-          <button 
-            onClick={() => setShowAddNew(false)}
-            className="text-sm text-purple-600 hover:text-purple-800"
-          >
-            ← Back to saved cards
-          </button>
-        )}
-      </div>
+      <h3 className="text-lg font-bold text-gray-800 mb-4">💳 Add Payment Method</h3>
       <p className="text-sm text-gray-600 mb-4">
         Enter your card details securely.
       </p>
       
-      <Elements stripe={stripePromise}>
+      {/* TODO: Wrap SetupForm with Elements provider */}
+      {/* <Elements stripe={stripePromise}> */}
         <SetupForm onSuccess={onSuccess} onCancel={onCancel} email={email} />
-      </Elements>
+      {/* </Elements> */}
       
       <p className="text-xs text-gray-500 mt-4 text-center">
         🔒 Secured by Stripe. Your card details are never stored on our servers.

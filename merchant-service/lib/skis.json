@@ -19,6 +19,17 @@
     "category": "Skis",
     "brand": "Atomic",
     "inStock": true,
+    "stock": 8
+  },
+  {
+    "id": "SKI-003",
+    "title": "Salomon QST 98",
+    "price": 649,
+    "currency": "USD",
+    "description": "Lightweight all-mountain ski with excellent edge grip.",
+    "category": "Skis",
+    "brand": "Salomon",
+    "inStock": true,
     "stock": 4
   }
 ]

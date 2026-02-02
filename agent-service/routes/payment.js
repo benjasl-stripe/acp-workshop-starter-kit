@@ -208,10 +208,10 @@ export async function getCustomerPaymentMethods(email) {
 /**
  * Create a Shared Payment Token via proxy
  */
-export async function createSPT(email, amount = 100000, currency = 'usd', sellerId = null, paymentMethodId = null) {
+export async function createSPT(email, amount = 100000, currency = 'usd') {
   const data = await callProxy('/create-spt', {
     method: 'POST',
-    body: JSON.stringify({ email, paymentMethodId, amount, currency, sellerId }),
+    body: JSON.stringify({ email, amount, currency }),
   });
   
   return data;

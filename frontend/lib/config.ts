@@ -70,6 +70,9 @@ export function saveConfig(config: Partial<Config>): void {
   if (config.productsApiUrl !== undefined) {
     localStorage.setItem('productsApiUrl', config.productsApiUrl);
   }
+  if (config.stripePublishableKey !== undefined) {
+    localStorage.setItem('stripePublishableKey', config.stripePublishableKey);
+  }
   if (config.userEmail !== undefined) {
     localStorage.setItem('userEmail', config.userEmail);
   }
