@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { 
   sendChatMessage, 
   CheckoutState,
-  updateCheckout 
+  updateCheckout,
+  getPaymentMethods
 } from '@/lib/api';
 import { fetchProducts, Product } from '@/lib/products';
 import { getConfig, saveConfig } from '@/lib/config';
@@ -179,6 +180,29 @@ export default function ChatInterface() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Check for existing payment methods when user email is set
+  useEffect(() => {
+    if (!mounted || !userEmail) return;
+    
+    const checkPaymentMethods = async () => {
+      try {
+        const config = getConfig();
+        if (!config.agentServiceUrl) return;
+        
+        const result = await getPaymentMethods(userEmail);
+        if (result.paymentMethods && result.paymentMethods.length > 0) {
+          console.log(`💳 Found ${result.paymentMethods.length} existing payment method(s)`);
+          setHasPaymentMethod(true);
+        }
+      } catch (err) {
+        // Silently fail - user might not have payment methods yet
+        console.log('Could not check payment methods:', err);
+      }
+    };
+    
+    checkPaymentMethods();
+  }, [mounted, userEmail]);
   
   const handleConfigClose = () => {
     setIsConfigOpen(false);
