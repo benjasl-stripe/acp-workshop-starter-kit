@@ -229,37 +229,33 @@ router.delete('/methods', async (req, res) => {
  * Get customer's saved payment methods via proxy
  * 
  * TODO: Implement this function
- * - Call the proxy to get payment methods for the email
- * - Return the array of payment methods
+ * - Call the proxy: /methods?email=${encodeURIComponent(email)}
+ * - Return data.paymentMethods array
  */
 export async function getCustomerPaymentMethods(email) {
-  // Get from proxy
-  const data = await callProxy(`/methods?email=${encodeURIComponent(email)}`);
-  return data.paymentMethods || [];
+  // TODO: Implement this function
+  // Call: callProxy(`/methods?email=${encodeURIComponent(email)}`)
+  // Return: data.paymentMethods || []
+  
+  throw new Error('TODO: Implement getCustomerPaymentMethods - see workshop Module 4, Chapter 3');
 }
 
 
 /**
- * Create a Shared Payment Token
+ * Create a Shared Payment Token (SPT)
  * 
  * TODO: Implement SPT creation
- * - Get the user's saved payment method
- * - Call the Stripe SPT API to create a token
- * - Return the token for use in checkout completion
+ * - Call the proxy to create an SPT with the user's payment method
+ * - POST /create-spt with { email, amount, currency }
+ * - Return the SPT token for use in checkout completion
  */
 export async function createSPT(email, amount = 100000, currency = 'usd') {
-  // Call the proxy to create an SPT
-  const data = await callProxy('/create-spt', {
-    method: 'POST',
-    body: JSON.stringify({ email, amount, currency }),
-  });
+  // TODO: Implement this function
+  // Call: callProxy('/create-spt', { method: 'POST', body: JSON.stringify({ email, amount, currency }) })
+  // Check for errors in response
+  // Return the SPT data (contains .token property)
   
-  if (data.error) {
-    throw new Error(data.error);
-  }
-  
-  console.log('🔐 SPT created for', email);
-  return data;
+  throw new Error('TODO: Implement createSPT - see workshop Module 4, Chapter 3');
 }
 
 
