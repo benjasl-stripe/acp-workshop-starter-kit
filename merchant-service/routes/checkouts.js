@@ -11,7 +11,7 @@
 
 import express from 'express';
 import crypto from 'crypto';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getProductsForCheckout as getDefaultProducts, hasStock as hasDefaultStock, getProductById as getDefaultProductById } from '../lib/productStore.js';
@@ -64,33 +64,40 @@ const getProducts = (catalogName = null) => {
     }
   }
   
-  // Fall back: Load all catalogs
+  // Fall back: Load all catalogs - dynamically scan lib folder for ALL .json files
   const allProducts = [];
   const seenIds = new Set();
-  const jsonFiles = ['skis.json', 'products.json', 'catalog.json', 'tv.json']; // Common catalog names
+  
+  // Dynamically find all .json files in the lib folder
+  let jsonFiles = [];
+  try {
+    const files = readdirSync(libPath);
+    jsonFiles = files.filter(f => f.endsWith('.json'));
+    console.log(`📂 Found catalog files: ${jsonFiles.join(', ')}`);
+  } catch (err) {
+    console.error('Error reading lib directory:', err.message);
+  }
   
   for (const file of jsonFiles) {
     const filePath = join(libPath, file);
-    if (existsSync(filePath)) {
-      try {
-        const data = JSON.parse(readFileSync(filePath, 'utf8'));
-        if (Array.isArray(data)) {
-          console.log(`📦 Loading catalog: ${file} (${data.length} products)`);
-          for (const p of data) {
-            if (p.id && !seenIds.has(p.id)) {
-              seenIds.add(p.id);
-              // JSON catalogs have prices in DOLLARS, always convert to CENTS
-              allProducts.push({
-                ...p,
-                price: p.price * 100,
-                _source: file
-              });
-            }
+    try {
+      const data = JSON.parse(readFileSync(filePath, 'utf8'));
+      if (Array.isArray(data)) {
+        console.log(`📦 Loading catalog: ${file} (${data.length} products)`);
+        for (const p of data) {
+          if (p.id && !seenIds.has(p.id)) {
+            seenIds.add(p.id);
+            // JSON catalogs have prices in DOLLARS, always convert to CENTS
+            allProducts.push({
+              ...p,
+              price: p.price * 100,
+              _source: file
+            });
           }
         }
-      } catch (err) {
-        // Ignore invalid files
       }
+    } catch (err) {
+      // Ignore invalid JSON files (like sales-history.json or config files)
     }
   }
   
