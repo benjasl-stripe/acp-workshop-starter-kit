@@ -87,12 +87,14 @@ function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
         // TODO: Save the payment method to the Agent backend
         // Uncomment the code below:
         
-        // // Get customer ID - uses email if set, otherwise generates anonymous ID
-        // const customerId = email || getOrCreateCustomerId();
+        // // Always use session customer ID (GUID-based, not email)
+        // // Email is separate profile info for receipts only
+        // const customerId = getOrCreateCustomerId();
         // const paymentMethodId = typeof setupIntent.payment_method === 'string' 
         //   ? setupIntent.payment_method 
         //   : setupIntent.payment_method.id;
         // 
+        // console.log('💳 Saving payment method for session customer:', customerId);
         // await savePaymentMethod(customerId, paymentMethodId);
         // onSuccess(paymentMethodId);  // ← Important! Closes the modal
       }
@@ -177,7 +179,9 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
         // TODO: Create a SetupIntent and get the clientSecret
         setClientSecret(null);
         // Replace with:
-        // const customerId = email || getOrCreateCustomerId();
+        // // Always use session customer ID (GUID-based, auto-generated)
+        // const customerId = getOrCreateCustomerId();
+        // console.log('🆔 Creating SetupIntent for session customer:', customerId);
         // const setupIntent = await createSetupIntent(customerId);
         // setClientSecret(setupIntent.clientSecret);
         

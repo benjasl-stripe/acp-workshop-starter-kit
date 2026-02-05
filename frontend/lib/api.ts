@@ -1,4 +1,4 @@
-import { getConfig, getUserEmail, type Config } from './config';
+import { getConfig, getUserEmail, getSessionCustomerId, type Config } from './config';
 import type { Product } from './products';
 import { formatProductsForAI } from './products';
 import { loggedFetch, addExternalLogs } from './acp-logger';
@@ -104,6 +104,8 @@ export async function sendChatMessage(
   
   // Get email and full profile from localStorage
   const userEmail = getUserEmail();
+  // Get session customer ID for payment method lookups (consistent across session)
+  const sessionCustomerId = getSessionCustomerId();
   let userProfile = null;
   try {
     const profileStr = typeof window !== 'undefined' ? localStorage.getItem('userProfile') : null;
@@ -123,6 +125,7 @@ export async function sendChatMessage(
       messages,
       checkoutState: checkoutState || null,
       userEmail: userEmail || null,
+      sessionCustomerId: sessionCustomerId || null, // Session-based ID for payment methods
       userProfile: userProfile || null, // Send full profile so Agent can auto-apply
       aiPersona: config.aiPersona || null,
       merchantUrl: merchantUrl || null,
@@ -360,14 +363,15 @@ export interface SavedPaymentMethod {
   expYear: number;
 }
 
-export async function getPaymentMethods(email: string): Promise<{ 
+export async function getPaymentMethods(customerId: string): Promise<{ 
   customerId?: string; 
   paymentMethods: SavedPaymentMethod[] 
 }> {
   const config = getConfig();
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
   
-  const response = await loggedFetch(`${agentUrl}/api/payment/methods?email=${encodeURIComponent(email)}`, {
+  // customerId can be email or session GUID (cust_xxx@session.local)
+  const response = await loggedFetch(`${agentUrl}/api/payment/methods?email=${encodeURIComponent(customerId)}`, {
     acpEndpoint: 'Get Payment Methods',
     acpFlow: 'Frontend → Agent',
   });
@@ -380,11 +384,12 @@ export async function getPaymentMethods(email: string): Promise<{
   return await response.json();
 }
 
-export async function deletePaymentMethods(email: string): Promise<{ success: boolean }> {
+export async function deletePaymentMethods(customerId: string): Promise<{ success: boolean }> {
   const config = getConfig();
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
   
-  const response = await loggedFetch(`${agentUrl}/api/payment/methods?email=${encodeURIComponent(email)}`, {
+  // customerId can be email or session GUID (cust_xxx@session.local)
+  const response = await loggedFetch(`${agentUrl}/api/payment/methods?email=${encodeURIComponent(customerId)}`, {
     method: 'DELETE',
     acpEndpoint: 'Delete Payment Methods',
     acpFlow: 'Frontend → Agent',

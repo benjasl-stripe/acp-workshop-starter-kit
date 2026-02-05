@@ -185,7 +185,7 @@ export default function ChatInterface() {
     loadProducts();
   }, []);
 
-  // Check for existing payment methods (uses email OR anonymous customer ID)
+  // Check for existing payment methods (uses session customer ID)
   useEffect(() => {
     if (!mounted) return;
     
@@ -194,8 +194,8 @@ export default function ChatInterface() {
         const config = getConfig();
         if (!config.agentServiceUrl) return;
         
-        // Use customer ID (email if set, otherwise anonymous ID if exists)
-        const customerId = getUserEmail() || localStorage.getItem('anonymousCustomerId');
+        // Use session customer ID (consistent across session, not tied to email)
+        const customerId = getOrCreateCustomerId();
         if (!customerId) {
           setHasPaymentMethod(false);
           return;
@@ -335,10 +335,9 @@ export default function ChatInterface() {
   };
 
   const clearChat = async () => {
-    // Get all customer identifiers (email and/or anonymous ID)
+    // Get session customer ID to delete payment methods
     const customersToDelete = [
-      userEmail,
-      localStorage.getItem('anonymousCustomerId')
+      localStorage.getItem('sessionCustomerId')
     ].filter(Boolean) as string[];
     
     // Delete payment methods and profile from Agent backend

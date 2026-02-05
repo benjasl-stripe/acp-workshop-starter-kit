@@ -65,29 +65,41 @@ export function getUserEmail(): string {
   return '';
 }
 
-// Get or create a customer identifier for payment methods
-// Uses real email if available, otherwise generates an anonymous ID
-export function getOrCreateCustomerId(): string {
+// Get or create a session-based customer ID for payment methods
+// This ID is auto-generated at session start and stays consistent throughout
+// Email is separate and used for profile/communication only
+export function getSessionCustomerId(): string {
   if (typeof window === 'undefined') return '';
   
-  // First, check if user has a real email
-  const email = getUserEmail();
-  if (email) return email;
+  // Check for existing session customer ID
+  let customerId = localStorage.getItem('sessionCustomerId');
+  if (customerId) return customerId;
   
-  // Check for existing anonymous ID
-  let anonId = localStorage.getItem('anonymousCustomerId');
-  if (anonId) return anonId;
-  
-  // Generate a new anonymous ID (looks like email for Stripe proxy compatibility)
-  anonId = `anon_${crypto.randomUUID().slice(0, 12)}@guest.local`;
-  localStorage.setItem('anonymousCustomerId', anonId);
-  return anonId;
+  // Generate a new session customer ID (email-like format for Stripe proxy compatibility)
+  customerId = `cust_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}@session.local`;
+  localStorage.setItem('sessionCustomerId', customerId);
+  console.log('🆔 New session customer ID created:', customerId);
+  return customerId;
 }
 
-// Clear anonymous customer ID (called when session is cleared)
-export function clearAnonymousCustomerId(): void {
+// Alias for backwards compatibility
+export function getOrCreateCustomerId(): string {
+  return getSessionCustomerId();
+}
+
+// Clear session customer ID (called when session is cleared)
+export function clearSessionCustomerId(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('anonymousCustomerId');
+  const oldId = localStorage.getItem('sessionCustomerId');
+  localStorage.removeItem('sessionCustomerId');
+  if (oldId) {
+    console.log('🗑️ Session customer ID cleared:', oldId);
+  }
+}
+
+// Backwards compatibility alias
+export function clearAnonymousCustomerId(): void {
+  clearSessionCustomerId();
 }
 
 export function saveConfig(config: Partial<Config>): void {
