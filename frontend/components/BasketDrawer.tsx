@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { CheckoutState } from '@/lib/api';
+import ImageOverlay from './ImageOverlay';
+import { getMerchantBaseUrl } from './ProductCard';
 
 interface BasketDrawerProps {
   checkout: CheckoutState | null;
@@ -11,7 +14,20 @@ interface BasketDrawerProps {
   hasPaymentMethod?: boolean;
 }
 
+// Build full image URL from relative path
+function getFullImageUrl(imageUrl: string | undefined): string | null {
+  if (!imageUrl) return null;
+  // If already a full URL, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  // Otherwise prepend merchant base URL
+  return `${getMerchantBaseUrl()}${imageUrl}`;
+}
+
 export default function BasketDrawer({ checkout, isOpen, onClose, onNewOrder, onPayNow, hasPaymentMethod }: BasketDrawerProps) {
+  const [enlargedImage, setEnlargedImage] = useState<{ src: string; alt: string } | null>(null);
+  
   if (!isOpen) return null;
 
   const formatAmount = (cents: number) => {
@@ -100,18 +116,33 @@ export default function BasketDrawer({ checkout, isOpen, onClose, onNewOrder, on
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-2">Items</h3>
                   <div className="space-y-2">
-                    {checkout.line_items.map((item, idx) => (
+                    {checkout.line_items.map((item, idx) => {
+                      const imageUrl = getFullImageUrl(item.image_url);
+                      return (
                       <div 
                         key={idx} 
                         className="flex items-center gap-3 bg-gray-50 rounded-lg p-2"
                       >
-                        {item.image_url && (
-                          <img 
-                            src={item.image_url} 
-                            alt={item.title}
-                            className="w-12 h-12 object-cover rounded"
-                          />
-                        )}
+                        {/* Product image with enlarge */}
+                        <div 
+                          className={`relative w-12 h-12 bg-gradient-to-br from-purple-100 to-indigo-100 rounded flex items-center justify-center overflow-hidden ${imageUrl ? 'cursor-pointer group' : ''}`}
+                          onClick={() => imageUrl && setEnlargedImage({ src: imageUrl, alt: item.title })}
+                        >
+                          {imageUrl ? (
+                            <>
+                              <img 
+                                src={imageUrl} 
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                                <span className="text-white text-sm drop-shadow-lg">🔍</span>
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-lg">📦</span>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {item.title}
@@ -124,7 +155,8 @@ export default function BasketDrawer({ checkout, isOpen, onClose, onNewOrder, on
                           {formatAmount(item.total)}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -221,6 +253,15 @@ export default function BasketDrawer({ checkout, isOpen, onClose, onNewOrder, on
           </div>
         )}
       </div>
+
+      {/* Image Overlay */}
+      {enlargedImage && (
+        <ImageOverlay
+          src={enlargedImage.src}
+          alt={enlargedImage.alt}
+          onClose={() => setEnlargedImage(null)}
+        />
+      )}
     </>
   );
 }
