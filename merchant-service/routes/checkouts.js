@@ -14,7 +14,6 @@ import crypto from 'crypto';
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { getProductsForCheckout as getDefaultProducts, hasStock as hasDefaultStock, getProductById as getDefaultProductById } from '../lib/productStore.js';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -101,16 +100,9 @@ const getProducts = (catalogName = null) => {
     }
   }
   
-  // If we found products in JSON files, use those
-  if (allProducts.length > 0) {
-    catalogCaches.set(cacheKey, { products: allProducts, time: now });
-    return allProducts;
-  }
-  
-  // Fall back to default product store
-  const defaultProducts = getDefaultProducts();
-  catalogCaches.set(cacheKey, { products: defaultProducts, time: now });
-  return defaultProducts;
+  // Cache and return the products from JSON catalogs
+  catalogCaches.set(cacheKey, { products: allProducts, time: now });
+  return allProducts;
 };
 
 // Default fulfillment options

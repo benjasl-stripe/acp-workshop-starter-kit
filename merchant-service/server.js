@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import productsRouter from './routes/products.js';
 import healthRouter from './routes/health.js';
 import checkoutsRouter from './routes/checkouts.js';
 import catalogRouter from './routes/catalog.js';
@@ -33,7 +32,6 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/products', productsRouter);
 app.use('/api/health', healthRouter);
 app.use('/checkouts', checkoutsRouter); // ACP Checkout endpoints
 app.use('/api', catalogRouter); // Dynamic catalog routes: /api/{json-filename}
@@ -44,7 +42,7 @@ app.get('/', (req, res) => {
     message: 'Merchant Backend API',
     version: '1.0.0',
     endpoints: {
-      products: '/api/products',
+      catalogs: '/api/{catalog-name}',
       health: '/api/health',
       checkouts: '/checkouts',
       webhooks: '/webhooks/stripe',
@@ -83,8 +81,7 @@ app.use((err, req, res, next) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`\n🚀 Merchant Backend running on http://localhost:${PORT}`);
-  console.log(`📦 Products API: http://localhost:${PORT}/api/products`);
-  console.log(`📂 JSON Catalogs: http://localhost:${PORT}/api/{filename} (e.g., /api/skis for lib/skis.json)`);
+  console.log(`📂 Catalogs API: http://localhost:${PORT}/api/{catalog} (e.g., /api/skis for lib/skis.json)`);
   console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
   console.log(`🛒 ACP Checkouts: http://localhost:${PORT}/checkouts`);
   console.log(`🔔 Webhooks: http://localhost:${PORT}/webhooks/stripe`);
