@@ -228,7 +228,7 @@ router.delete('/methods', async (req, res) => {
 /**
  * Get customer's saved payment methods via proxy
  * 
- * TODO: Implement this function
+ * TODO: Implement getCustomerPaymentMethods function
  * - Call the proxy: /methods?email=${encodeURIComponent(email)}
  * - Return data.paymentMethods array
  */
