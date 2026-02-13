@@ -625,20 +625,31 @@ export default function ChatInterface() {
           setUserEmail(newEmail);
           
           // Smart resume: Check profile completeness and suggest next steps
+          // Only show guidance if user has started setting up their profile
           try {
             const profileStr = localStorage.getItem('userProfile');
             if (profileStr) {
               const profile = JSON.parse(profileStr);
               const hasEmail = !!profile.email;
+              const hasName = !!profile.name;
               const hasAddress = !!(profile.address?.line_one && profile.address?.city);
               const hasShipping = !!profile.shippingPreference;
               const hasPayment = !!profile.paymentMethodId;
-              
+
               // Update state
               if (hasPayment) setHasPaymentMethod(true);
               const isComplete = hasEmail && hasAddress && hasShipping && hasPayment;
               setProfileComplete(isComplete);
-              
+
+              // Only show smart resume messages if user has actually started profile setup
+              // (has at least email or name or any other data saved)
+              const hasAnyData = hasEmail || hasName || hasAddress || hasShipping || hasPayment;
+
+              if (!hasAnyData) {
+                // Profile is empty - don't nag the user, let them browse
+                return;
+              }
+
               // Add smart resume message based on what was just added
               if (isComplete) {
                 addAssistantMessage(
