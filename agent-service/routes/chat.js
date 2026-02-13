@@ -161,39 +161,40 @@ async function executeFunction(name, args, context) {
       }
       
       case 'complete_checkout': {
-        // Get the user email from context to create SPT
-        const email = context.userEmail;
-        
-        if (!email) {
-          console.log('   ⚠️ No user email for payment');
+        // Use sessionCustomerId for payment method lookup (matches how payment methods are saved)
+        // sessionCustomerId is a session-based GUID like cust_xxx@session.local
+        const customerId = context.sessionCustomerId;
+
+        if (!customerId) {
+          console.log('   ⚠️ No session customer ID for payment');
           return {
             success: false,
-            error: 'No user email available for payment',
+            error: 'No session customer ID available for payment',
             action_required: 'request_payment_method'
           };
         }
-        
+
         // Check if user has a payment method
         try {
-          const paymentMethods = await getCustomerPaymentMethods(email);
+          const paymentMethods = await getCustomerPaymentMethods(customerId);
           if (!paymentMethods || paymentMethods.length === 0) {
-            console.log('   ⚠️ No payment method on file');
+            console.log('   ⚠️ No payment method on file for:', customerId);
             return {
               success: false,
               error: 'No payment method on file',
               action_required: 'request_payment_method'
             };
           }
-          
+
           // Get checkout details to determine the amount for SPT
           const checkout = await getCheckout(args.checkout_id, merchantUrl);
           const totalAmount = checkout.totals?.find(t => t.type === 'total')?.amount || 10000;
           const currency = checkout.currency || 'usd';
-          
+
           console.log(`   💰 Checkout total: ${totalAmount} ${currency}`);
-          
-          // Create SPT with proper usage limits
-          const spt = await createSPT(email, totalAmount, currency, args.checkout_id);
+
+          // Create SPT with session customer ID (matches saved payment methods)
+          const spt = await createSPT(customerId, totalAmount, currency, args.checkout_id);
           console.log(`   🔐 SPT created: ${spt.token.substring(0, 30)}...`);
           
           const result = await completeCheckout(args.checkout_id, spt.token, merchantUrl);
@@ -250,21 +251,22 @@ async function executeFunction(name, args, context) {
       
       case 'request_payment_method': {
         console.log('   💳 Checking payment methods');
-        const email = context.userEmail;
-        
-        if (!email) {
-          console.log('   ⚠️ No user email - cannot check payment methods');
+        // Use sessionCustomerId for payment method lookup (matches how payment methods are saved)
+        const customerId = context.sessionCustomerId;
+
+        if (!customerId) {
+          console.log('   ⚠️ No session customer ID - cannot check payment methods');
           return {
             success: false,
             has_payment_method: false,
-            error: 'Need user email first',
-            action_required: 'set_user_email'
+            error: 'Need session customer ID first',
+            action: 'show_payment_setup'
           };
         }
-        
+
         // Check if user already has payment methods on file
         try {
-          const existingMethods = await getCustomerPaymentMethods(email);
+          const existingMethods = await getCustomerPaymentMethods(customerId);
           if (existingMethods && existingMethods.length > 0) {
             console.log(`   ✅ Customer has ${existingMethods.length} payment method(s) on file`);
             return {
@@ -382,7 +384,7 @@ function sanitizeMessages(messages) {
  */
 router.post('/', async (req, res) => {
   try {
-    const { messages, checkoutState, userEmail, userProfile, aiPersona, merchantUrl, productsApiUrl, lambdaEndpoint } = req.body;
+    const { messages, checkoutState, userEmail, sessionCustomerId, userProfile, aiPersona, merchantUrl, productsApiUrl, lambdaEndpoint } = req.body;
     
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Messages array required' });
@@ -408,6 +410,7 @@ router.post('/', async (req, res) => {
     console.log('   Messages:', messages.length, sanitizedMessages.length !== messages.length ? `(sanitized to ${sanitizedMessages.length})` : '');
     console.log('   Checkout:', checkoutState?.id || 'none');
     console.log('   User:', userEmail || 'anonymous');
+    console.log('   Session Customer:', sessionCustomerId || 'none');
     console.log('   Profile:', userProfile ? `✓ (address: ${userProfile.address ? '✓' : '✗'}, shipping: ${userProfile.shippingPreference || '✗'})` : '✗');
     console.log('   Merchant:', effectiveMerchantUrl);
     console.log('   Products URL:', productsApiUrl || '❌ NOT SET');
@@ -470,6 +473,7 @@ router.post('/', async (req, res) => {
     // Context for function execution (includes merchantUrl for workshop mode)
     const context = {
       userEmail,
+      sessionCustomerId, // Session-based ID for payment method lookups
       checkoutState,
       merchantUrl: effectiveMerchantUrl,
       catalog: catalogName

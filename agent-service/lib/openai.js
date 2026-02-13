@@ -51,9 +51,53 @@ export function buildSystemPrompt(options = {}) {
   // Add base persona (user's custom or default)
   systemPrompt += aiPersona || `You are a helpful AI shopping assistant for an equipment store.
 
-You help customers browse products and make purchases. When a customer wants to buy something, use the create_checkout function. Guide them through the checkout process step by step.
+You help customers browse products and make purchases. Be friendly, helpful, and concise. Use markdown formatting for better readability.`;
 
-Be friendly, helpful, and concise. Use markdown formatting for better readability.`;
+  // Add step-by-step checkout flow instructions (always included)
+  systemPrompt += `
+
+## CHECKOUT FLOW - FOLLOW THESE STEPS IN ORDER
+When a customer wants to buy something, guide them through these steps ONE AT A TIME:
+
+**Step 1: Create Checkout**
+When customer expresses purchase intent, call create_checkout with the items they want.
+
+**Step 2: Collect Customer Email** (if missing)
+Ask for their email using the profile button:
+"First, I need your email for order confirmation.
+
+[PROFILE:info]"
+
+**Step 3: Collect Shipping Address** (if missing)
+After email is saved, ask for shipping address:
+"Great! Now I need your shipping address.
+
+[PROFILE:address]"
+
+**Step 4: Select Shipping Option** (if missing)
+After address is saved, ask for shipping preference:
+"Address saved! Please choose your shipping speed.
+
+[PROFILE:shipping]"
+
+**Step 5: Add Payment Method** (if missing)
+After shipping is selected, ask for payment:
+"Almost done! Please add a payment method.
+
+[PROFILE:payment]"
+
+**Step 6: CONFIRM BEFORE COMPLETING**
+⚠️ CRITICAL: When ALL information is collected and checkout is ready_for_payment, you MUST:
+1. Show a clear order summary (items, shipping, total)
+2. ASK THE USER TO CONFIRM with a question like:
+   "Ready to complete your order? Just say **'yes'** or **'confirm'** to proceed!"
+3. ONLY call complete_checkout AFTER the user explicitly confirms (says "yes", "confirm", "complete", "proceed", etc.)
+4. NEVER auto-complete - ALWAYS wait for user confirmation
+
+IMPORTANT:
+- Complete ONE step at a time - wait for user to complete each step before moving to next
+- After user completes a step, acknowledge it and prompt for the next missing step
+- Keep responses brief and focused on the current step`;
 
   // ALWAYS add product display instructions (never skip these)
   systemPrompt += `
@@ -106,49 +150,73 @@ RULES:
 
   // Add user profile context if available
   if (userProfile) {
+    const hasEmail = !!userProfile.email;
     const hasAddress = !!(userProfile.address?.line_one && userProfile.address?.city);
     const hasShipping = !!userProfile.shippingPreference;
     const hasPayment = !!userProfile.paymentMethodId;
-    
-    systemPrompt += `\n\n## User Profile Status
-- Name: ${userProfile.name || 'Not set'}
-- Email: ${userProfile.email || 'Not set'}
-- Shipping Address: ${hasAddress ? '✅ SAVED (do not ask)' : '❌ MISSING'}
-- Shipping Preference: ${hasShipping ? '✅ SAVED: ' + userProfile.shippingPreference + ' (do not ask)' : '❌ MISSING'}
-- Payment Method: ${hasPayment ? '✅ SAVED (do not ask)' : '❌ MISSING'}
+    const allComplete = hasEmail && hasAddress && hasShipping && hasPayment;
 
-${hasAddress && hasShipping && hasPayment ? 
-'🎯 ALL INFO SAVED - Do NOT ask for any profile information. Just confirm the order and complete it!' : 
-`NEXT STEP: Show ONLY the button for the first missing item:
-${!hasAddress ? '→ [PROFILE:address]' : !hasShipping ? '→ [PROFILE:shipping]' : !hasPayment ? '→ [PROFILE:payment]' : ''}`}
+    // Determine what step the user is on
+    let currentStep = '';
+    let nextAction = '';
+    if (!hasEmail) {
+      currentStep = 'Step 2: Need Email';
+      nextAction = '→ Ask for email with [PROFILE:info]';
+    } else if (!hasAddress) {
+      currentStep = 'Step 3: Need Address';
+      nextAction = '→ Ask for address with [PROFILE:address]';
+    } else if (!hasShipping) {
+      currentStep = 'Step 4: Need Shipping';
+      nextAction = '→ Ask for shipping preference with [PROFILE:shipping]';
+    } else if (!hasPayment) {
+      currentStep = 'Step 5: Need Payment';
+      nextAction = '→ Ask for payment method with [PROFILE:payment]';
+    } else {
+      currentStep = 'Step 6: Ready for Confirmation';
+      nextAction = '→ Show order summary and ASK USER TO CONFIRM before completing';
+    }
+
+    systemPrompt += `\n\n## User Profile Status
+- Email: ${hasEmail ? '✅ ' + userProfile.email : '❌ MISSING'}
+- Name: ${userProfile.name || 'Not set'}
+- Shipping Address: ${hasAddress ? '✅ SAVED' : '❌ MISSING'}
+- Shipping Preference: ${hasShipping ? '✅ ' + userProfile.shippingPreference : '❌ MISSING'}
+- Payment Method: ${hasPayment ? '✅ SAVED' : '❌ MISSING'}
+
+**CURRENT CHECKOUT STEP: ${currentStep}**
+${nextAction}
+${allComplete ? '\n⚠️ ALL INFO COMPLETE - You MUST ask user to confirm BEFORE calling complete_checkout!' : ''}
 `;
   }
 
   // Add checkout context if available
   if (checkoutState) {
-    const itemsList = checkoutState.line_items?.map(i => `${i.title} (${i.id})`).join(', ') || 'none';
+    const itemsList = checkoutState.line_items?.map(i => `${i.title} x${i.quantity || 1}`).join(', ') || 'none';
+    const total = checkoutState.totals?.find(t => t.type === 'total');
+    const totalDisplay = total ? `$${(total.amount / 100).toFixed(2)}` : 'calculating...';
+
     systemPrompt += `\n\n## Current Checkout Session
 - Checkout ID: ${checkoutState.id}
 - Status: ${checkoutState.status}
-- Items in cart: ${itemsList}
-${checkoutState.status === 'not_ready_for_payment' ? '- ⚠️ Needs shipping address to proceed' : ''}
-${checkoutState.status === 'ready_for_payment' ? '- ✅ Ready for payment - ask customer to confirm' : ''}
-${checkoutState.status === 'completed' ? '- 🎉 Order complete!' : ''}
+- Items: ${itemsList}
+- Total: ${totalDisplay}
+${checkoutState.status === 'not_ready_for_payment' ? '- ⚠️ Checkout needs more info - follow the step-by-step flow above' : ''}
+${checkoutState.status === 'ready_for_payment' ? `
+🛒 **CHECKOUT READY FOR PAYMENT**
+Before calling complete_checkout, you MUST:
+1. Show order summary: "${itemsList}" for ${totalDisplay}
+2. Ask: "Would you like to complete this order? Say **'yes'** to confirm!"
+3. WAIT for user to say "yes", "confirm", "proceed", "complete my order", etc.
+4. ONLY THEN call complete_checkout` : ''}
+${checkoutState.status === 'completed' ? '- 🎉 Order complete! Thank the customer.' : ''}
 
-IMPORTANT: If the user asks to buy DIFFERENT items than what's in the cart, you MUST call create_checkout with the NEW items.
-Do NOT use the existing checkout for different products. Create a fresh checkout.
+IMPORTANT: If the user asks to buy DIFFERENT items than what's in the cart, call create_checkout with the NEW items.
 
 ## Handling Payment Errors
-If complete_checkout fails with an error, you MUST:
-1. Tell the user EXACTLY what went wrong (e.g., "Your card was declined due to suspected fraud")
+If complete_checkout fails with an error:
+1. Tell the user EXACTLY what went wrong
 2. Suggest they try a different card: [PROFILE:payment]
-3. Do NOT just say "add a payment method" - explain the SPECIFIC reason
-
-Example for declined card:
-"Your payment was declined: Card flagged for suspected fraud.
-
-Please try a different card:
-[PROFILE:payment]"
+3. Do NOT auto-retry - let user fix the issue first
 `;
   }
 
