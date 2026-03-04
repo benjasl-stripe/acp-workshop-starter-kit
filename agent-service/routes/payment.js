@@ -237,7 +237,7 @@ export async function getCustomerPaymentMethods(email) {
   // Call: callProxy(`/methods?email=${encodeURIComponent(email)}`)
   // Return: data.paymentMethods || []
   
-  throw new Error('TODO: Implement getCustomerPaymentMethods - see workshop Module 3, Chapter 3');
+  throw new Error('TODO: Implement getCustomerPaymentMethods - see workshop Module 3, Chapter 5');
 }
 
 
@@ -255,7 +255,7 @@ export async function createSPT(email, amount = 100000, currency = 'usd') {
   // Check for errors in response
   // Return the SPT data (contains .token property)
   
-  throw new Error('TODO: Implement createSPT - see workshop Module 3, Chapter 3');
+  throw new Error('TODO: Implement createSPT - see workshop Module 3, Chapter 5');
 }
 
 
