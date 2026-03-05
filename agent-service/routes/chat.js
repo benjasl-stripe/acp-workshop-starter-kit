@@ -187,7 +187,20 @@ async function executeFunction(name, args, context) {
           }
 
           // Get checkout details to determine the amount for SPT
-          const checkout = await getCheckout(args.checkout_id, merchantUrl);
+          let checkout;
+          try {
+            checkout = await getCheckout(args.checkout_id, merchantUrl);
+          } catch (getErr) {
+            console.log(`   ❌ Could not retrieve checkout: ${getErr.message}`);
+            return {
+              success: false,
+              error: `Checkout not found: ${args.checkout_id}`,
+              error_type: 'checkout_not_found',
+              checkout_id: args.checkout_id,
+              user_message: 'The checkout session could not be found. Please start a new order.'
+            };
+          }
+          
           const totalAmount = checkout.totals?.find(t => t.type === 'total')?.amount || 10000;
           const currency = checkout.currency || 'usd';
 
@@ -209,16 +222,40 @@ async function executeFunction(name, args, context) {
         } catch (err) {
           console.log(`   ❌ Payment error: ${err.message}`);
           
-          // Determine if this is a card issue vs other error
-          const isCardDeclined = err.message.toLowerCase().includes('declined') || 
-                                 err.message.toLowerCase().includes('fraud') ||
-                                 err.message.toLowerCase().includes('card');
+          // Categorize the error type
+          const errorLower = err.message.toLowerCase();
+          const isCardDeclined = errorLower.includes('declined') || 
+                                 errorLower.includes('fraud') ||
+                                 errorLower.includes('card');
+          const isStockError = errorLower.includes('stock') || 
+                               errorLower.includes('inventory') ||
+                               errorLower.includes('unavailable');
+          
+          // Try to get current checkout state to preserve it
+          let currentCheckout = context.checkoutState;
+          try {
+            currentCheckout = await getCheckout(args.checkout_id, merchantUrl);
+          } catch (e) {
+            // Checkout might be gone, use what we have in context
+          }
+          
+          if (isStockError) {
+            return {
+              success: false,
+              checkout: currentCheckout,
+              checkout_id: args.checkout_id,
+              error: err.message,
+              error_type: 'insufficient_stock',
+              user_message: `Unable to complete purchase: ${err.message}`
+            };
+          }
           
           return {
             success: false,
+            checkout: currentCheckout,
+            checkout_id: args.checkout_id,
             error: err.message,
             error_type: isCardDeclined ? 'card_declined' : 'payment_error',
-            // Tell AI to explain the error and suggest trying a different card
             action_required: isCardDeclined ? 'explain_card_error' : 'request_payment_method',
             user_message: isCardDeclined 
               ? `The payment was declined: ${err.message}. Please try a different card.`
