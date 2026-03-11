@@ -263,6 +263,47 @@ export default function ChatInterface() {
     setMessages(prev => [...prev, { role: 'assistant', content }]);
   };
 
+  const moveCursorToEnd = () => {
+    setTimeout(() => {
+      if (!inputRef.current) return;
+      const length = inputRef.current.value.length;
+      inputRef.current.selectionStart = length;
+      inputRef.current.selectionEnd = length;
+    }, 0);
+  };
+
+  const canNavigateHistory = (textarea: HTMLTextAreaElement) => {
+    if (inputHistory.length === 0) return false;
+
+    const { selectionStart, selectionEnd, value } = textarea;
+    const length = value.length;
+    const isAtEdge = (selectionStart === 0 && selectionEnd === 0)
+      || (selectionStart === length && selectionEnd === length);
+
+    return isAtEdge || input === '';
+  };
+
+  const setHistoryInput = (nextIndex: number) => {
+    historyIndex.current = nextIndex;
+    setInput(nextIndex === -1 ? '' : inputHistory[nextIndex]);
+    moveCursorToEnd();
+  };
+
+  const navigateHistory = (direction: 'older' | 'newer') => {
+    if (direction === 'older') {
+      const nextIndex = historyIndex.current === -1
+        ? inputHistory.length - 1
+        : Math.max(0, historyIndex.current - 1);
+      setHistoryInput(nextIndex);
+      return;
+    }
+
+    const nextIndex = historyIndex.current < inputHistory.length - 1
+      ? historyIndex.current + 1
+      : -1;
+    setHistoryInput(nextIndex);
+  };
+
   // Handle chat submissions - AI handles all checkout logic via function calling
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,50 +382,18 @@ export default function ChatInterface() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
+      return;
     }
-    if (e.key === 'ArrowUp' && inputHistory.length > 0) {
-      const textarea = e.currentTarget;
-      const len = textarea.value.length;
-      const isAtEdge = (textarea.selectionStart === 0 && textarea.selectionEnd === 0)
-        || (textarea.selectionStart === len && textarea.selectionEnd === len);
-      if (isAtEdge || input === '') {
-        e.preventDefault();
-        const newIndex = historyIndex.current === -1
-          ? inputHistory.length - 1
-          : Math.max(0, historyIndex.current - 1);
-        historyIndex.current = newIndex;
-        setInput(inputHistory[newIndex]);
-        setTimeout(() => {
-          if (inputRef.current) {
-            const len = inputRef.current.value.length;
-            inputRef.current.selectionStart = len;
-            inputRef.current.selectionEnd = len;
-          }
-        }, 0);
-      }
+
+    if (e.key === 'ArrowUp' && canNavigateHistory(e.currentTarget)) {
+      e.preventDefault();
+      navigateHistory('older');
+      return;
     }
-    if (e.key === 'ArrowDown' && historyIndex.current !== -1) {
-      const textarea = e.currentTarget;
-      const len = textarea.value.length;
-      const isAtEdge = (textarea.selectionStart === 0 && textarea.selectionEnd === 0)
-        || (textarea.selectionStart === len && textarea.selectionEnd === len);
-      if (isAtEdge || input === '') {
-        e.preventDefault();
-        if (historyIndex.current < inputHistory.length - 1) {
-          historyIndex.current += 1;
-          setInput(inputHistory[historyIndex.current]);
-        } else {
-          historyIndex.current = -1;
-          setInput('');
-        }
-        setTimeout(() => {
-          if (inputRef.current) {
-            const len = inputRef.current.value.length;
-            inputRef.current.selectionStart = len;
-            inputRef.current.selectionEnd = len;
-          }
-        }, 0);
-      }
+
+    if (e.key === 'ArrowDown' && historyIndex.current !== -1 && canNavigateHistory(e.currentTarget)) {
+      e.preventDefault();
+      navigateHistory('newer');
     }
   };
 
