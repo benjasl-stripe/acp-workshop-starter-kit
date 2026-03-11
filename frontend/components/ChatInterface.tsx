@@ -29,6 +29,7 @@ const STORAGE_KEYS = {
   messages: 'acpChatMessages',
   checkout: 'acpCheckoutState',
   hasPaymentMethod: 'acpHasPaymentMethod',
+  inputHistory: 'acpInputHistory',
 };
 
 function loadPersistedChat(): {
@@ -106,6 +107,14 @@ export default function ChatInterface() {
   const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [inputHistory, setInputHistory] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.inputHistory);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const historyIndex = useRef<number>(-1);
 
   // Track mounted state to avoid hydration mismatch
   useEffect(() => {
@@ -260,6 +269,12 @@ export default function ChatInterface() {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
+    setInputHistory(prev => {
+      const next = [...prev, userMessage];
+      try { localStorage.setItem(STORAGE_KEYS.inputHistory, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    historyIndex.current = -1;
     setInput('');
     setError(null);
 
@@ -327,6 +342,50 @@ export default function ChatInterface() {
       e.preventDefault();
       handleSubmit(e);
     }
+    if (e.key === 'ArrowUp' && inputHistory.length > 0) {
+      const textarea = e.currentTarget;
+      const len = textarea.value.length;
+      const isAtEdge = (textarea.selectionStart === 0 && textarea.selectionEnd === 0)
+        || (textarea.selectionStart === len && textarea.selectionEnd === len);
+      if (isAtEdge || input === '') {
+        e.preventDefault();
+        const newIndex = historyIndex.current === -1
+          ? inputHistory.length - 1
+          : Math.max(0, historyIndex.current - 1);
+        historyIndex.current = newIndex;
+        setInput(inputHistory[newIndex]);
+        setTimeout(() => {
+          if (inputRef.current) {
+            const len = inputRef.current.value.length;
+            inputRef.current.selectionStart = len;
+            inputRef.current.selectionEnd = len;
+          }
+        }, 0);
+      }
+    }
+    if (e.key === 'ArrowDown' && historyIndex.current !== -1) {
+      const textarea = e.currentTarget;
+      const len = textarea.value.length;
+      const isAtEdge = (textarea.selectionStart === 0 && textarea.selectionEnd === 0)
+        || (textarea.selectionStart === len && textarea.selectionEnd === len);
+      if (isAtEdge || input === '') {
+        e.preventDefault();
+        if (historyIndex.current < inputHistory.length - 1) {
+          historyIndex.current += 1;
+          setInput(inputHistory[historyIndex.current]);
+        } else {
+          historyIndex.current = -1;
+          setInput('');
+        }
+        setTimeout(() => {
+          if (inputRef.current) {
+            const len = inputRef.current.value.length;
+            inputRef.current.selectionStart = len;
+            inputRef.current.selectionEnd = len;
+          }
+        }, 0);
+      }
+    }
   };
 
   const clearCheckout = () => {
@@ -355,10 +414,12 @@ export default function ChatInterface() {
     setMessages([]);
     setCheckoutState(null);
     setHasPaymentMethod(false);
+    setInputHistory([]);
     setProfileComplete(false);
     setUserEmail('');
     setError(null);
     clearPersistedChat();
+    localStorage.removeItem(STORAGE_KEYS.inputHistory);
     // Clear profile data from localStorage
     localStorage.removeItem('userProfile');
     // Clear anonymous customer ID
