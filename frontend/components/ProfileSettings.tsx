@@ -42,7 +42,7 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
   const [showPaymentSetup, setShowPaymentSetup] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  
+
   // Address form state
   const [addressForm, setAddressForm] = useState({
     line_one: '',
@@ -69,7 +69,7 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
     // First, load from localStorage (always our source of truth)
     const saved = localStorage.getItem('userProfile');
     let localProfile = null;
-    
+
     if (saved) {
       try {
         localProfile = JSON.parse(saved);
@@ -81,14 +81,14 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
         console.error('Could not parse saved profile:', err);
       }
     }
-    
+
     // If we have an email, try to sync with Agent backend
     const email = localProfile?.email;
     if (email) {
       try {
         const config = getConfig();
         const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
-        
+
         const res = await fetch(`${agentUrl}/api/profile?email=${encodeURIComponent(email)}`);
         if (res.ok) {
           const data = await res.json();
@@ -113,14 +113,14 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
   const saveProfile = async (updatedProfile: UserProfile) => {
     setIsSaving(true);
     setSaveMessage(null);
-    
+
     try {
       const config = getConfig();
       const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
-      
+
       // Always save to localStorage as backup
       localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-      
+
       // Try to save to Agent backend
       if (updatedProfile.email) {
         await fetch(`${agentUrl}/api/profile`, {
@@ -129,11 +129,11 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
           body: JSON.stringify({ profile: updatedProfile }),
         });
       }
-      
+
       setProfile(updatedProfile);
       setSaveMessage('✅ Profile saved!');
       onProfileUpdate?.(updatedProfile);
-      
+
       setTimeout(() => setSaveMessage(null), 2000);
     } catch (err) {
       console.error('Error saving profile:', err);
@@ -194,7 +194,7 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
   if (showPaymentSetup) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="max-w-md w-full">
+        <div className="max-h-[90vh] w-full max-w-md overflow-hidden">
           <PaymentSetup
             email={profile.email}
             onSuccess={handlePaymentSuccess}
@@ -370,7 +370,7 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
           {activeTab === 'shipping' && (
             <div className="space-y-4">
               <p className="text-gray-400 text-sm mb-4">Choose your default shipping preference:</p>
-              
+
               <button
                 onClick={() => handleSaveShipping('shipping_standard')}
                 className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
@@ -445,7 +445,7 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
                   </button>
                 </div>
               )}
-              
+
               <p className="text-xs text-gray-500 text-center mt-4">
                 🔒 Your payment info is securely stored by Stripe
               </p>
@@ -461,11 +461,11 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
           >
             Reset All
           </button>
-          
+
           {saveMessage && (
             <span className="text-sm text-gray-300">{saveMessage}</span>
           )}
-          
+
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
@@ -477,4 +477,3 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
     </div>
   );
 }
-
