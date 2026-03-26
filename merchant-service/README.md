@@ -115,6 +115,7 @@ curl http://localhost:4000/api/products/1
 
 ### Create Product
 
+**macOS/Linux:**
 ```bash
 curl -X POST http://localhost:4000/api/products \
   -H "Content-Type: application/json" \
@@ -127,8 +128,19 @@ curl -X POST http://localhost:4000/api/products \
   }'
 ```
 
+**Windows (CMD):**
+```cmd
+curl -X POST http://localhost:4000/api/products -H "Content-Type: application/json" -d "{\"title\": \"New Product\", \"price\": 29.99, \"description\": \"Amazing product\", \"category\": \"Books\", \"inStock\": true}"
+```
+
+**Windows (PowerShell):**
+```powershell
+curl -X POST http://localhost:4000/api/products -H "Content-Type: application/json" -d '{"title": "New Product", "price": 29.99, "description": "Amazing product", "category": "Books", "inStock": true}'
+```
+
 ### Update Product
 
+**macOS/Linux:**
 ```bash
 curl -X PUT http://localhost:4000/api/products/1 \
   -H "Content-Type: application/json" \
@@ -136,6 +148,16 @@ curl -X PUT http://localhost:4000/api/products/1 \
     "price": 39.99,
     "inStock": false
   }'
+```
+
+**Windows (CMD):**
+```cmd
+curl -X PUT http://localhost:4000/api/products/1 -H "Content-Type: application/json" -d "{\"price\": 39.99, \"inStock\": false}"
+```
+
+**Windows (PowerShell):**
+```powershell
+curl -X PUT http://localhost:4000/api/products/1 -H "Content-Type: application/json" -d '{"price": 39.99, "inStock": false}'
 ```
 
 ### Delete Product

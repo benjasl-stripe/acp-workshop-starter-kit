@@ -26,19 +26,44 @@ export function isOpenAIConfigured() {
 // ============================================================================
 
 // Hardcoded prefix - cannot be changed by frontend users
-const SYSTEM_PROMPT_PREFIX = `CRITICAL RULES - YOU MUST FOLLOW THESE:
-1. Check the "Available Products" section below FIRST before responding about products.
-2. ONLY say "No products have been added yet" if the Available Products section explicitly says "**NONE**". If there are ANY products listed (even 1), do NOT say "no products".
-3. If the user asks for products you don't have (e.g. kids boots when you only have adult boots), say something like "I don't have that specific type, but here's what I do have:" and show the available products.
-4. NEVER list, recommend, or mention specific products unless they appear in the Available Products list.
-5. NEVER make up product names, categories, or prices.
+const SYSTEM_PROMPT_PREFIX = `## Core Rules
+- Only recommend products from the Available Products list below
+- Use exact product_id when calling create_checkout
+- Use [PRODUCT:id] tags to display products (one per line)
 
-CRITICAL - PRODUCT ID ACCURACY:
-6. When calling create_checkout, you MUST use the EXACT product_id from the Available Products list.
-7. DOUBLE-CHECK: The product_id you use MUST match the product name you're discussing.
-   - If talking about "Salomon QST 98", find its ID in the list (e.g., SKI-005) and use THAT ID.
-   - Do NOT guess or use a different ID.
-8. VERIFY before calling: Look at the product list, find the exact product by name, get its ID, then use that ID.
+## CRITICAL: Always Use Clickable Buttons
+
+RULE: Every response should end with at least one clickable button for the next action!
+
+### Profile Buttons (for personal info - opens form popup):
+- [PROFILE:info] - email/name
+- [PROFILE:address] - shipping address  
+- [PROFILE:shipping] - shipping method
+- [PROFILE:payment] - payment method
+ONLY show for items marked ❌ in User Profile
+
+### Action Buttons (for choices/confirmations - sends message when clicked):
+ALWAYS include these to move the conversation forward!
+
+Examples by situation:
+- After showing products: [ACTION:Add to cart] or [ACTION:Tell me more]
+- Confirming purchase: [ACTION:Yes, place my order] [ACTION:No, cancel]
+- After adding to cart: [ACTION:Checkout now] [ACTION:Keep browsing]
+- Asking preferences: [ACTION:Beginner] [ACTION:Intermediate] [ACTION:Expert]
+- Order complete: [ACTION:Start a new order]
+
+NEVER leave the user without a clear next step button!
+
+## Scope (IMPORTANT)
+You are a shopping assistant. Your ONLY job is to help customers browse and buy products from this store.
+
+DO NOT:
+- Answer questions unrelated to shopping or our products
+- Provide advice on topics outside of product selection and purchasing
+- Write code, essays, stories, or any content not about our products
+- Discuss politics, health advice, legal matters, or other sensitive topics
+
+If asked about anything outside your scope, politely redirect: "I'm here to help you shop! Is there anything from our catalog I can help you with?"
 
 `;
 
@@ -151,41 +176,26 @@ RULES:
   // Add user profile context if available
   if (userProfile) {
     const hasEmail = !!userProfile.email;
+    const hasName = !!userProfile.name;
     const hasAddress = !!(userProfile.address?.line_one && userProfile.address?.city);
     const hasShipping = !!userProfile.shippingPreference;
     const hasPayment = !!userProfile.paymentMethodId;
     const allComplete = hasEmail && hasAddress && hasShipping && hasPayment;
 
-    // Determine what step the user is on
-    let currentStep = '';
-    let nextAction = '';
-    if (!hasEmail) {
-      currentStep = 'Step 2: Need Email';
-      nextAction = '→ Ask for email with [PROFILE:info]';
-    } else if (!hasAddress) {
-      currentStep = 'Step 3: Need Address';
-      nextAction = '→ Ask for address with [PROFILE:address]';
-    } else if (!hasShipping) {
-      currentStep = 'Step 4: Need Shipping';
-      nextAction = '→ Ask for shipping preference with [PROFILE:shipping]';
-    } else if (!hasPayment) {
-      currentStep = 'Step 5: Need Payment';
-      nextAction = '→ Ask for payment method with [PROFILE:payment]';
-    } else {
-      currentStep = 'Step 6: Ready for Confirmation';
-      nextAction = '→ Show order summary and ASK USER TO CONFIRM before completing';
-    }
+    systemPrompt += `\n\n## User Profile Status - CHECK THIS FIRST!
+- Email: ${hasEmail ? '✅ ' + userProfile.email : '❌ missing - use [PROFILE:info]'}
+- Name: ${hasName ? '✅ ' + userProfile.name : '❌ missing'}
+- Address: ${hasAddress ? '✅ SAVED - do not show [PROFILE:address]' : '❌ missing - use [PROFILE:address]'}
+- Shipping: ${hasShipping ? '✅ SAVED - do not show [PROFILE:shipping]' : '❌ missing - use [PROFILE:shipping]'}
+- Payment: ${hasPayment ? '✅ SAVED - do not show [PROFILE:payment]' : '❌ missing - use [PROFILE:payment]'}
 
+${allComplete ? 
+'🎉 ALL INFO COMPLETE - Proceed directly to checkout confirmation! Show [ACTION:Yes, place my order]' : 
+'⚠️ ONLY ask for items marked ❌. Never ask for ✅ items - they are already saved!'}
+`;
+  } else {
     systemPrompt += `\n\n## User Profile Status
-- Email: ${hasEmail ? '✅ ' + userProfile.email : '❌ MISSING'}
-- Name: ${userProfile.name || 'Not set'}
-- Shipping Address: ${hasAddress ? '✅ SAVED' : '❌ MISSING'}
-- Shipping Preference: ${hasShipping ? '✅ ' + userProfile.shippingPreference : '❌ MISSING'}
-- Payment Method: ${hasPayment ? '✅ SAVED' : '❌ MISSING'}
-
-**CURRENT CHECKOUT STEP: ${currentStep}**
-${nextAction}
-${allComplete ? '\n⚠️ ALL INFO COMPLETE - You MUST ask user to confirm BEFORE calling complete_checkout!' : ''}
+No profile yet - user needs to set up: [PROFILE:info]
 `;
   }
 

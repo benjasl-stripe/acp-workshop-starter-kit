@@ -283,11 +283,23 @@ export default function ChatInterface() {
           items: response.checkoutState.line_items?.map(i => `${i.title} (${i.id})`) || [],
           status: response.checkoutState.status
         });
-        setCheckoutState(response.checkoutState);
         
-        // Save to Sales tab if order just completed
-        if (response.checkoutState.status === 'completed') {
-          saveCompletedOrder(response.checkoutState);
+        // Check if order is finalized (completed or cancelled)
+        const isFinalized = response.checkoutState.status === 'completed' || 
+                           response.checkoutState.status === 'cancelled';
+        
+        if (isFinalized) {
+          // Save to Sales tab if completed
+          if (response.checkoutState.status === 'completed') {
+            saveCompletedOrder(response.checkoutState);
+          }
+          // Clear the basket after a short delay so user sees the confirmation
+          console.log('🧹 Clearing basket - order finalized:', response.checkoutState.status);
+          setTimeout(() => {
+            setCheckoutState(null);
+          }, 1000);
+        } else {
+          setCheckoutState(response.checkoutState);
         }
       }
       
@@ -506,6 +518,14 @@ export default function ChatInterface() {
                         if (form) form.requestSubmit();
                       }, 100);
                     }}
+                    onActionClick={(action) => {
+                      // User clicked an action button - send as message
+                      setInput(action);
+                      setTimeout(() => {
+                        const form = document.querySelector('form');
+                        if (form) form.requestSubmit();
+                      }, 100);
+                    }}
                   />
                 ) : (
                   <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -535,47 +555,6 @@ export default function ChatInterface() {
             </div>
           )}
         </div>
-
-        {/* Quick Actions */}
-        {checkoutState?.status === 'ready_for_payment' && (
-          <div className="px-4 py-2 bg-green-50 border-t border-green-200">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-green-800">
-                💰 Total: <strong>${((checkoutState.totals?.find(t => t.type === 'total')?.amount || 0) / 100).toFixed(2)}</strong>
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowBasket(true)}
-                  className="text-sm bg-gray-600 text-white px-3 py-1 rounded-lg hover:bg-gray-700"
-                >
-                  🛒 View Cart
-                </button>
-                {!hasPaymentMethod && (
-                  <button
-                    onClick={() => handleOpenProfile('payment')}
-                    className="text-sm bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700"
-                  >
-                    💳 Add Card
-                  </button>
-                )}
-                {hasPaymentMethod && (
-                  <button
-                    onClick={() => {
-                      setInput('Complete my order');
-                      setTimeout(() => {
-                        const form = document.querySelector('form');
-                        if (form) form.requestSubmit();
-                      }, 100);
-                    }}
-                    className="text-sm bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700"
-                  >
-                    ✅ Pay Now
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Input */}
         <form onSubmit={handleSubmit} className="p-3 bg-white border-t">
@@ -654,8 +633,8 @@ export default function ChatInterface() {
               if (isComplete) {
                 addAssistantMessage(
                   `✅ **Profile complete!** You're all set.\n\n` +
-                  `Your shipping address, delivery preference, and payment method are saved. ` +
-                  `Say **"continue"** or **"proceed with my order"** and I'll complete your purchase!`
+                  `Your shipping address, delivery preference, and payment method are saved.\n\n` +
+                  `[ACTION:Continue with my order]`
                 );
               } else if (!hasEmail) {
                 addAssistantMessage(

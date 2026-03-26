@@ -9,6 +9,7 @@ interface MessageRendererProps {
   products: Product[];
   onOpenProfile?: (tab: 'info' | 'address' | 'shipping' | 'payment') => void;
   onProductClick?: (product: Product) => void;
+  onActionClick?: (action: string) => void;
 }
 
 // Profile button labels and icons
@@ -19,9 +20,9 @@ const PROFILE_BUTTONS: Record<string, { label: string; icon: string }> = {
   payment: { label: 'Add Payment Method', icon: '💳' },
 };
 
-export default function MessageRenderer({ content, products, onOpenProfile, onProductClick }: MessageRendererProps) {
-  // Parse content for product and profile references
-  const parts = content.split(/(\[PRODUCT:[^\]]+\]|\[PROFILE:[^\]]+\])/g);
+export default function MessageRenderer({ content, products, onOpenProfile, onProductClick, onActionClick }: MessageRendererProps) {
+  // Parse content for product, profile, and action references
+  const parts = content.split(/(\[PRODUCT:[^\]]+\]|\[PROFILE:[^\]]+\]|\[ACTION:[^\]]+\])/g);
   
   // Group consecutive product tags together
   const groupedElements: JSX.Element[] = [];
@@ -60,6 +61,7 @@ export default function MessageRenderer({ content, products, onOpenProfile, onPr
   parts.forEach((part) => {
     const productMatch = part.match(/\[PRODUCT:([^\]]+)\]/);
     const profileMatch = part.match(/\[PROFILE:([^\]]+)\]/);
+    const actionMatch = part.match(/\[ACTION:([^\]]+)\]/);
     
     if (productMatch) {
       // Flush any pending text before starting product group
@@ -107,6 +109,23 @@ export default function MessageRenderer({ content, products, onOpenProfile, onPr
           >
             <span className="text-xl">{buttonConfig.icon}</span>
             <span>{buttonConfig.label}</span>
+          </button>
+        </div>
+      );
+    } else if (actionMatch) {
+      // Action button - clickable response option
+      flushProductGroup();
+      flushTextBuffer();
+      
+      const actionText = actionMatch[1].trim();
+      
+      groupedElements.push(
+        <div key={`action-${groupedElements.length}`} className="my-2 inline-block mr-2">
+          <button
+            onClick={() => onActionClick?.(actionText)}
+            className="bg-white border-2 border-indigo-500 text-indigo-700 font-semibold py-2 px-4 rounded-lg hover:bg-indigo-50 hover:border-indigo-600 transition-all"
+          >
+            {actionText}
           </button>
         </div>
       );
