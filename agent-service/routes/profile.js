@@ -12,6 +12,7 @@
  */
 
 import express from 'express';
+import { getCustomerPaymentMethods } from './payment.js';
 
 const router = express.Router();
 
@@ -100,9 +101,10 @@ router.delete('/', (req, res) => {
 /**
  * GET /api/profile/check
  * Quick check if user has complete profile for checkout
+ * Optional: pass sessionCustomerId to also check Stripe for payment methods
  */
-router.get('/check', (req, res) => {
-  const { email } = req.query;
+router.get('/check', async (req, res) => {
+  const { email, sessionCustomerId } = req.query;
   
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
@@ -112,7 +114,21 @@ router.get('/check', (req, res) => {
   
   const hasAddress = !!(profile?.address?.line_one && profile?.address?.city);
   const hasShipping = !!profile?.shippingPreference;
-  const hasPayment = !!profile?.paymentMethodId;
+  
+  // Check both profile.paymentMethodId AND Stripe (if sessionCustomerId provided)
+  let hasPayment = !!profile?.paymentMethodId;
+  let hasStripePaymentMethod = false;
+  
+  if (!hasPayment && sessionCustomerId) {
+    try {
+      const paymentMethods = await getCustomerPaymentMethods(sessionCustomerId);
+      hasStripePaymentMethod = paymentMethods && paymentMethods.length > 0;
+      hasPayment = hasStripePaymentMethod;
+    } catch (err) {
+      // Ignore errors - just means we can't check Stripe
+    }
+  }
+  
   const isComplete = hasAddress && hasShipping && hasPayment;
   
   res.json({
@@ -120,6 +136,7 @@ router.get('/check', (req, res) => {
     hasAddress,
     hasShipping,
     hasPayment,
+    hasStripePaymentMethod,
     isComplete,
     missing: [
       !hasAddress && 'address',

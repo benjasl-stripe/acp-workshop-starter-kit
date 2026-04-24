@@ -179,7 +179,8 @@ RULES:
     const hasName = !!userProfile.name;
     const hasAddress = !!(userProfile.address?.line_one && userProfile.address?.city);
     const hasShipping = !!userProfile.shippingPreference;
-    const hasPayment = !!userProfile.paymentMethodId;
+    // Check both profile.paymentMethodId AND Stripe payment methods (fallback for cards saved via Stripe but not synced to profile)
+    const hasPayment = !!userProfile.paymentMethodId || !!hasStripePaymentMethod;
     const allComplete = hasEmail && hasAddress && hasShipping && hasPayment;
 
     systemPrompt += `\n\n## User Profile Status - CHECK THIS FIRST!
@@ -267,7 +268,7 @@ If complete_checkout fails with an error:
 // ============================================================================
 
 export async function createChatCompletion(messages, options = {}) {
-  const { checkoutState, products, aiPersona, userProfile, toolResults, lambdaEndpoint } = options;
+  const { checkoutState, products, aiPersona, userProfile, hasStripePaymentMethod, toolResults, lambdaEndpoint } = options;
   
   // Use provided endpoint, fall back to env var
   const endpoint = lambdaEndpoint || getLambdaEndpoint();
