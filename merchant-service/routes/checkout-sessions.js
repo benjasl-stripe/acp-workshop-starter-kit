@@ -1,12 +1,14 @@
 /**
- * Checkout Routes - ACP Implementation
+ * Checkout Session Routes - UCP Implementation
  * 
- * TODO: Implement the Agentic Commerce Protocol checkout endpoints:
- * - POST /checkouts - Create a Checkout Session
- * - GET /checkouts/:id - Retrieve a Checkout object
- * - PUT /checkouts/:id - Update a Checkout Session
- * - POST /checkouts/:id/complete - Complete a Checkout (with SPT)
- * - POST /checkouts/:id/cancel - Cancel a Checkout
+ * Universal Commerce Protocol (UCP) checkout endpoints:
+ * - POST /checkout-sessions - Create a Checkout Session
+ * - GET /checkout-sessions/:id - Retrieve a Checkout Session
+ * - PUT /checkout-sessions/:id - Update a Checkout Session
+ * - POST /checkout-sessions/:id/complete - Complete a Checkout Session (with SPT)
+ * - POST /checkout-sessions/:id/cancel - Cancel a Checkout Session
+ * 
+ * @see https://ucp.dev/2026-04-08/specification/checkout-rest/
  */
 
 import express from 'express';
@@ -230,11 +232,11 @@ const formatCheckoutResponse = (checkout) => {
 };
 
 // ============================================================================
-// ACP Endpoints - TODO: Implement these
+// UCP Endpoints - TODO: Implement these
 // ============================================================================
 
 /**
- * POST /checkouts - Create a Checkout Session
+ * POST /checkout-sessions - Create a Checkout Session
  * 
  * TODO: Implement this endpoint
  * - Extract items, buyer, fulfillment_address, catalog from req.body
@@ -248,14 +250,14 @@ const formatCheckoutResponse = (checkout) => {
 router.post('/', (req, res) => {
   // TODO: Implement this endpoint
   return res.status(501).json({
-    error: 'TODO: Implement POST /checkouts',
+    error: 'TODO: Implement POST /checkout-sessions',
     hint: 'See workshop Module 4, Chapter 2'
   });
 });
 
 
 /**
- * GET /checkouts/:id - Retrieve a Checkout object
+ * GET /checkout-sessions/:id - Retrieve a Checkout Session
  * 
  * TODO: Implement this endpoint
  * - Get id from req.params
@@ -266,14 +268,14 @@ router.post('/', (req, res) => {
 router.get('/:id', (req, res) => {
   // TODO: Implement this endpoint
   return res.status(501).json({
-    error: 'TODO: Implement GET /checkouts/:id',
+    error: 'TODO: Implement GET /checkout-sessions/:id',
     hint: 'See workshop Module 4, Chapter 3'
   });
 });
 
 
 /**
- * PUT /checkouts/:id - Update a Checkout Session
+ * PUT /checkout-sessions/:id - Update a Checkout Session
  * 
  * TODO: Implement this endpoint
  * - Get id from req.params
@@ -288,14 +290,14 @@ router.get('/:id', (req, res) => {
 router.put('/:id', (req, res) => {
   // TODO: Implement this endpoint
   return res.status(501).json({
-    error: 'TODO: Implement PUT /checkouts/:id',
+    error: 'TODO: Implement PUT /checkout-sessions/:id',
     hint: 'See workshop Module 4, Chapter 3'
   });
 });
 
 
 /**
- * POST /checkouts/:id/complete - Complete a Checkout with SPT
+ * POST /checkout-sessions/:id/complete - Complete a Checkout Session with SPT
  * 
  * TODO: Implement this endpoint
  * - Get id from req.params, payment_data from req.body
@@ -314,13 +316,13 @@ router.put('/:id', (req, res) => {
 router.post('/:id/complete', async (req, res) => {
   // TODO: Implement this endpoint
   return res.status(501).json({
-    error: 'TODO: Implement POST /checkouts/:id/complete',
+    error: 'TODO: Implement POST /checkout-sessions/:id/complete',
     hint: 'See workshop Module 4, Chapter 4'
   });
 });
 
 /**
- * POST /checkouts/:id/cancel - Cancel a Checkout
+ * POST /checkout-sessions/:id/cancel - Cancel a Checkout Session
  * 
  * TODO: Implement this endpoint
  * - Get id from req.params, reason from req.body
@@ -334,7 +336,7 @@ router.post('/:id/complete', async (req, res) => {
 router.post('/:id/cancel', (req, res) => {
   // TODO: Implement this endpoint
   return res.status(501).json({
-    error: 'TODO: Implement POST /checkouts/:id/cancel',
+    error: 'TODO: Implement POST /checkout-sessions/:id/cancel',
     hint: 'See workshop Module 4, Chapter 5'
   });
 });

@@ -1,11 +1,13 @@
 /**
  * Agent Service
  * 
- * Orchestrates the ACP checkout flow:
+ * Orchestrates the UCP checkout flow:
  * 1. Receives chat messages from frontend
  * 2. Calls OpenAI directly for AI responses with function calling
- * 3. Detects purchase intent and manages checkouts via ACP
+ * 3. Detects purchase intent and manages checkouts via UCP
  * 4. Creates Stripe Shared Payment Tokens (SPT) for payments
+ * 
+ * @see https://ucp.dev/2026-04-08/specification/checkout-rest/
  */
 
 import express from 'express';
@@ -42,7 +44,11 @@ app.get('/', (req, res) => {
   res.json({
     service: 'Agent Service',
     version: '1.0.0',
-    description: 'ACP Agent with Stripe SPT support',
+    description: 'UCP Agent with Stripe SPT support',
+    ucp: {
+      version: '2026-04-08',
+      spec: 'https://ucp.dev/2026-04-08/specification/checkout-rest/',
+    },
     endpoints: {
       chat: 'POST /api/chat - Send messages to AI',
       checkout: {

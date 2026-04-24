@@ -1,7 +1,7 @@
 /**
  * Chat Route with AI-Powered Function Calling
  * 
- * Handles AI chat by calling OpenAI directly and executing ACP function calls
+ * Handles AI chat by calling OpenAI directly and executing UCP function calls
  */
 
 import express from 'express';
@@ -20,7 +20,7 @@ import { createChatCompletion } from '../lib/openai.js';
 const router = express.Router();
 
 // ============================================================================
-// Function Executors - Execute ACP operations based on AI decisions
+// Function Executors - Execute UCP operations based on AI decisions
 // ============================================================================
 
 /**

@@ -33,7 +33,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* ACP Inspector Toggle - Right */}
+        {/* UCP Inspector Toggle - Right */}
         <div className="pointer-events-auto">
           {!inspectorOpen && (
             <ACPInspectorToggle 
@@ -66,7 +66,7 @@ export default function Home() {
           <ChatInterface />
         </div>
 
-        {/* ACP Inspector Sidebar - Right */}
+        {/* UCP Inspector Sidebar - Right */}
         <div 
           className={`transition-all duration-300 overflow-hidden rounded-2xl shadow-2xl ${
             inspectorOpen ? 'w-[400px] opacity-100' : 'w-0 opacity-0'

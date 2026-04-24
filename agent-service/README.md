@@ -1,9 +1,9 @@
 # Agent Service
 
-The Agent Service is the "brain" of the ACP demo. It orchestrates:
+The Agent Service is the "brain" of the UCP demo. It orchestrates:
 
 1. **AI Chat** - Calls Lambda for natural language understanding
-2. **ACP Checkout** - Manages checkout flow with the Merchant Backend
+2. **UCP Checkout** - Manages checkout flow with the Merchant Backend
 3. **Stripe SPT** - Creates Shared Payment Tokens for secure payments
 
 ## Architecture
@@ -11,7 +11,7 @@ The Agent Service is the "brain" of the ACP demo. It orchestrates:
 ```
 ┌──────────────┐     ┌──────────────────────┐     ┌─────────────────┐
 │   Frontend   │────►│   Agent Service      │────►│ Merchant Backend│
-│   (Next.js)  │◄────│   (this service)     │◄────│ (ACP endpoints) │
+│   (Next.js)  │◄────│   (this service)     │◄────│ (UCP endpoints) │
 └──────────────┘     └──────────┬───────────┘     └─────────────────┘
                                │
                      ┌─────────┴─────────┐
@@ -56,7 +56,7 @@ The Agent Service is the "brain" of the ACP demo. It orchestrates:
 ### Chat
 - `POST /api/chat` - Send messages to AI (via Lambda)
 
-### Checkout (ACP)
+### Checkout (UCP)
 - `POST /api/checkout/create` - Create checkout session
 - `GET /api/checkout/:id` - Get checkout status
 - `PUT /api/checkout/:id` - Update checkout (address, shipping)
@@ -90,7 +90,7 @@ To switch to production mode: Remove `SPT_SIMULATION_MODE` from `.env` and set t
    - Payment method reference
    - Usage limits (max amount, currency, expiration)
    - Seller details (merchant identifier)
-3. **Agent sends SPT to Merchant** - Via ACP `/checkouts/:id/complete` endpoint
+3. **Agent sends SPT to Merchant** - Via UCP `/checkout-sessions/:id/complete` endpoint
 4. **Merchant processes SPT** - Creates PaymentIntent with `shared_payment_granted_token`
 5. **Stripe clones payment method** - Stripe creates a copy on Merchant's account
 6. **Payment completes** - Funds go to Merchant, order is confirmed

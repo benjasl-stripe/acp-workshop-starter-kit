@@ -1,6 +1,6 @@
 /**
  * Stripe Call Logger
- * Logs Stripe SDK operations to the ACP inspector
+ * Logs Stripe SDK operations to the UCP inspector
  */
 
 import { logACPCall } from './acp-call-logger.js';

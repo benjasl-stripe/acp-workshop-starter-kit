@@ -1,16 +1,18 @@
 /**
  * Workshop AI Assistant Lambda Handler
  * 
- * Proxy to OpenAI API with Function Calling support for ACP operations
+ * Proxy to OpenAI API with Function Calling support for UCP operations
  * Workshop participants use this shared Lambda instead of their own OpenAI account
+ * 
+ * @see https://ucp.dev/2026-04-08/specification/checkout-rest/
  */
 
 
 // ============================================================================
-// ACP Tool Definitions for OpenAI Function Calling
+// UCP Tool Definitions for OpenAI Function Calling
 // ============================================================================
 
-const ACP_TOOLS = [
+const UCP_TOOLS = [
   {
     type: 'function',
     function: {
@@ -368,7 +370,7 @@ ${checkoutState.status === 'completed' ? '- 🎉 Order complete!' : ''}
 
     // Add tools if function calling is enabled
     if (enableFunctionCalling) {
-      openaiRequest.tools = ACP_TOOLS;
+      openaiRequest.tools = UCP_TOOLS;
       openaiRequest.tool_choice = 'auto';
     }
 

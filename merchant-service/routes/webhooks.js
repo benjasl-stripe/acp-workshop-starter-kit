@@ -10,7 +10,7 @@
 
 import express from 'express';
 import Stripe from 'stripe';
-import { checkouts } from './checkouts.js';
+import { checkouts } from './checkout-sessions.js';
 
 const router = express.Router();
 

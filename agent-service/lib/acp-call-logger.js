@@ -1,13 +1,13 @@
 /**
- * ACP Call Logger - Tracks all calls from Agent Service to Merchant Backend
+ * UCP Call Logger - Tracks all calls from Agent Service to Merchant Backend
  * These logs are returned to the frontend for display in the inspector
  */
 
-// Store recent ACP calls (cleared after being sent to frontend)
+// Store recent UCP calls (cleared after being sent to frontend)
 let pendingLogs = [];
 
 /**
- * Log an ACP call to the merchant backend
+ * Log a UCP call to the merchant backend
  */
 export function logACPCall(entry) {
   const log = {
@@ -35,7 +35,7 @@ export function getPendingLogs() {
 }
 
 /**
- * Wrapper for fetch that logs ACP calls
+ * Wrapper for fetch that logs UCP calls
  * @param {string} url - The URL to fetch
  * @param {object} options - Fetch options
  * @param {object} metadata - Logging metadata
@@ -65,7 +65,7 @@ export async function loggedACPFetch(url, options = {}, metadata = {}) {
     requestBody,
   };
   
-  console.log(`📤 ACP Call: ${method} ${logEntry.endpoint}`);
+  console.log(`📤 UCP Call: ${method} ${logEntry.endpoint}`);
   
   try {
     const response = await fetch(url, options);
@@ -94,7 +94,7 @@ export async function loggedACPFetch(url, options = {}, metadata = {}) {
       duration,
     });
     
-    console.log(`📥 ACP Response: ${response.status} (${duration}ms)`);
+    console.log(`📥 UCP Response: ${response.status} (${duration}ms)`);
     
     return response;
   } catch (error) {
@@ -108,7 +108,7 @@ export async function loggedACPFetch(url, options = {}, metadata = {}) {
       duration,
     });
     
-    console.error(`❌ ACP Error: ${error.message}`);
+    console.error(`❌ UCP Error: ${error.message}`);
     throw error;
   }
 }
@@ -117,10 +117,11 @@ function extractEndpoint(url) {
   try {
     const path = new URL(url).pathname;
     
-    if (path.includes('/complete')) return 'POST /checkouts/:id/complete';
-    if (path.includes('/cancel')) return 'POST /checkouts/:id/cancel';
-    if (path.match(/\/checkouts\/[^/]+$/)) return 'GET /checkouts/:id';
-    if (path.includes('/checkouts')) return 'POST /checkouts';
+    // Support both /checkouts (legacy) and /checkout-sessions (UCP)
+    if (path.includes('/complete')) return 'POST /checkout-sessions/:id/complete';
+    if (path.includes('/cancel')) return 'POST /checkout-sessions/:id/cancel';
+    if (path.match(/\/(checkouts|checkout-sessions)\/[^/]+$/)) return 'GET /checkout-sessions/:id';
+    if (path.includes('/checkouts') || path.includes('/checkout-sessions')) return 'POST /checkout-sessions';
     
     return path;
   } catch {

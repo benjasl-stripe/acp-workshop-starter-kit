@@ -269,7 +269,7 @@ export default function ChatInterface() {
     setIsLoading(true);
 
     try {
-      // AI-driven chat flow - Agent Service handles all ACP calls via function calling
+      // AI-driven chat flow - Agent Service handles all UCP calls via function calling
       // Products are fetched by the agent from the configured API, not passed from frontend
       const response = await sendChatMessage(newMessages, undefined, checkoutState);
       
@@ -393,7 +393,7 @@ export default function ChatInterface() {
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-5 text-center">
           <div className="flex items-center justify-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold">🤖 ACP + SPT Demo</h1>
+            <h1 className="text-2xl font-bold">🤖 UCP + SPT Demo</h1>
             {mounted && getConfig().testMode && (
               <span className="text-xs bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full font-bold">
                 TEST
@@ -477,14 +477,14 @@ export default function ChatInterface() {
           {messages.length === 0 && (
             <div className="bg-white p-5 rounded-2xl shadow-md">
               <p className="text-gray-700 font-medium">
-                👋 Welcome to the ACP + SPT Demo!
+                👋 Welcome to the UCP + SPT Demo!
               </p>
               <p className="text-gray-600 mt-2 text-sm">
                 This demo shows the complete flow:
               </p>
               <ol className="mt-2 text-sm text-gray-600 space-y-1 list-decimal list-inside">
                 <li>Browse and select products</li>
-                <li>Create checkout via <strong>ACP</strong></li>
+                <li>Create checkout via <strong>UCP</strong></li>
                 <li>Add shipping address</li>
                 <li>Save card with <strong>Stripe Elements</strong></li>
                 <li>Create <strong>SPT</strong> and complete purchase</li>

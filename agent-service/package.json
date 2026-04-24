@@ -1,7 +1,7 @@
 {
   "name": "agent-service",
   "version": "1.0.0",
-  "description": "ACP Agent Service - Orchestrates AI chat, ACP checkouts, and Stripe SPT",
+  "description": "UCP Agent Service - Orchestrates AI chat, UCP checkouts, and Stripe SPT",
   "main": "server.js",
   "type": "module",
   "scripts": {

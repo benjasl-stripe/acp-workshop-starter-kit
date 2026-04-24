@@ -1,9 +1,11 @@
 /**
  * Checkout Route
  * 
- * Manages ACP checkout sessions with the merchant backend
+ * Manages UCP checkout sessions with the merchant backend
  * 
- * TODO: Implement the ACP checkout functions to communicate with the Merchant
+ * TODO: Implement the UCP checkout functions to communicate with the Merchant
+ * 
+ * @see https://ucp.dev/2026-04-08/specification/checkout-rest/
  */
 
 import express from 'express';
@@ -35,7 +37,7 @@ function getMerchantUrl(req) {
 
 /**
  * POST /api/checkout/create
- * Create a new checkout session via ACP
+ * Create a new checkout session via UCP
  */
 router.post('/create', async (req, res) => {
   try {
@@ -46,7 +48,7 @@ router.post('/create', async (req, res) => {
       return res.status(400).json({ error: 'Items array required' });
     }
     
-    console.log('🛒 Creating checkout via ACP:', items);
+    console.log('🛒 Creating checkout via UCP:', items);
     console.log('   Merchant URL:', merchantUrl);
     
     // Call the exported function
@@ -63,7 +65,7 @@ router.post('/create', async (req, res) => {
 
 /**
  * GET /api/checkout/:id
- * Get checkout status via ACP
+ * Get checkout status via UCP
  */
 router.get('/:id', async (req, res) => {
   try {
@@ -85,7 +87,7 @@ router.get('/:id', async (req, res) => {
 
 /**
  * PUT /api/checkout/:id
- * Update checkout via ACP (shipping address, fulfillment option)
+ * Update checkout via UCP (shipping address, fulfillment option)
  */
 router.put('/:id', async (req, res) => {
   try {
@@ -114,7 +116,7 @@ router.put('/:id', async (req, res) => {
 
 /**
  * POST /api/checkout/:id/complete
- * Complete checkout with SPT via ACP
+ * Complete checkout with SPT via UCP
  */
 router.post('/:id/complete', async (req, res) => {
   try {
@@ -141,7 +143,7 @@ router.post('/:id/complete', async (req, res) => {
 
 /**
  * POST /api/checkout/:id/cancel
- * Cancel checkout via ACP
+ * Cancel checkout via UCP
  */
 router.post('/:id/cancel', async (req, res) => {
   try {
@@ -164,13 +166,13 @@ router.post('/:id/cancel', async (req, res) => {
 
 // ============================================================================
 // Exported Functions for use by chat.js (AI function calling)
-// TODO: Implement these functions to call the Merchant's ACP endpoints
+// TODO: Implement these functions to call the Merchant's UCP endpoints
 // ============================================================================
 
 /**
  * Create a new checkout session
  * 
- * TODO: Call POST /checkouts on the Merchant service
+ * TODO: Call POST /checkout-sessions on the Merchant service
  * - Send items array and optional buyer info
  * - Include catalog name if provided
  * - Return the checkout object from the Merchant
@@ -178,7 +180,7 @@ router.post('/:id/cancel', async (req, res) => {
 export async function createCheckout(items, buyer, merchantUrl, catalog = null) {
   // TODO: Implement this function
   // Build the request body with items, buyer (optional), and catalog (optional)
-  // Call: POST ${merchantUrl}/checkouts
+  // Call: POST ${merchantUrl}/checkout-sessions
   // Return the checkout object from the response
   
   throw new Error('TODO: Implement createCheckout - see workshop instructions');
@@ -188,11 +190,11 @@ export async function createCheckout(items, buyer, merchantUrl, catalog = null) 
 /**
  * Get checkout by ID
  * 
- * TODO: Call GET /checkouts/:id on the Merchant service
+ * TODO: Call GET /checkout-sessions/:id on the Merchant service
  */
 export async function getCheckout(checkoutId, merchantUrl) {
   // TODO: Implement this function
-  // Call: GET ${merchantUrl}/checkouts/${checkoutId}
+  // Call: GET ${merchantUrl}/checkout-sessions/${checkoutId}
   // Return the checkout object from the response
   
   throw new Error('TODO: Implement getCheckout - see workshop instructions');
@@ -202,15 +204,15 @@ export async function getCheckout(checkoutId, merchantUrl) {
 /**
  * Update checkout with shipping address or fulfillment option
  * 
- * TODO: Call PUT /checkouts/:id on the Merchant service
- * - Convert camelCase to snake_case for ACP protocol:
+ * TODO: Call PUT /checkout-sessions/:id on the Merchant service
+ * - Convert camelCase to snake_case for UCP protocol:
  *   fulfillmentAddress → fulfillment_address
  *   fulfillmentOptionId → fulfillment_option_id
  */
 export async function updateCheckout(checkoutId, updates, merchantUrl) {
   // TODO: Implement this function
   // Build body with snake_case keys: fulfillment_address, fulfillment_option_id
-  // Call: PUT ${merchantUrl}/checkouts/${checkoutId}
+  // Call: PUT ${merchantUrl}/checkout-sessions/${checkoutId}
   // Return the updated checkout object
   
   throw new Error('TODO: Implement updateCheckout - see workshop instructions');
@@ -220,14 +222,14 @@ export async function updateCheckout(checkoutId, updates, merchantUrl) {
 /**
  * Complete checkout with SPT payment token
  * 
- * TODO: Call POST /checkouts/:id/complete on the Merchant service
+ * TODO: Call POST /checkout-sessions/:id/complete on the Merchant service
  * - Send payment_data with the SPT token
  * - Handle payment errors (declined, fraud) from checkout.messages
  */
 export async function completeCheckout(checkoutId, paymentToken, merchantUrl) {
   // TODO: Implement this function
   // Build body: { payment_data: { token: paymentToken, provider: 'stripe' } }
-  // Call: POST ${merchantUrl}/checkouts/${checkoutId}/complete
+  // Call: POST ${merchantUrl}/checkout-sessions/${checkoutId}/complete
   // Check response for errors in checkout.messages array
   // Return the completed checkout object
   
@@ -238,11 +240,11 @@ export async function completeCheckout(checkoutId, paymentToken, merchantUrl) {
 /**
  * Cancel a checkout
  * 
- * TODO: Call POST /checkouts/:id/cancel on the Merchant service
+ * TODO: Call POST /checkout-sessions/:id/cancel on the Merchant service
  */
 export async function cancelCheckout(checkoutId, reason, merchantUrl) {
   // TODO: Implement this function
-  // Call: POST ${merchantUrl}/checkouts/${checkoutId}/cancel
+  // Call: POST ${merchantUrl}/checkout-sessions/${checkoutId}/cancel
   // Send { reason } in the body
   // Return the cancelled checkout object
   

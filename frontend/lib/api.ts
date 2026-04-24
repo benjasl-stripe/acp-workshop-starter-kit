@@ -99,7 +99,7 @@ export async function sendChatMessage(
   // Use Agent Service for chat
   const agentUrl = config.agentServiceUrl || 'http://localhost:3001';
   
-  // Pass merchant URL for workshop mode (agent uses this for ACP calls)
+  // Pass merchant URL for workshop mode (agent uses this for UCP calls)
   const merchantUrl = getMerchantUrl(config);
   
   // Get email and full profile from localStorage
@@ -144,7 +144,7 @@ export async function sendChatMessage(
 
   const result = await response.json();
   
-  // If there are ACP logs from the server, add them to the inspector
+  // If there are UCP logs from the server, add them to the inspector
   if (result.acpLogs && result.acpLogs.length > 0) {
     addExternalLogs(result.acpLogs);
   }

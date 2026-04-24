@@ -2,7 +2,7 @@ import express from 'express';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { checkouts } from './checkouts.js';
+import { checkouts } from './checkout-sessions.js';
 
 const router = express.Router();
 const __dirname = dirname(fileURLToPath(import.meta.url));

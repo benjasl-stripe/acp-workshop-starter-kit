@@ -1,5 +1,5 @@
 /**
- * ACP Logger - Tracks all ACP endpoint calls for the inspector panel
+ * UCP Logger - Tracks all UCP endpoint calls for the inspector panel
  */
 
 export type FlowDirection = 
@@ -239,10 +239,11 @@ function extractEndpoint(url: string): string {
     
     // Extract meaningful endpoint name
     if (path.includes('/api/chat')) return 'Chat';
-    if (path.includes('/checkouts') && path.includes('/complete')) return 'Complete Checkout';
-    if (path.includes('/checkouts') && path.includes('/cancel')) return 'Cancel Checkout';
-    if (path.includes('/checkouts/')) return path.includes('PUT') ? 'Update Checkout' : 'Get Checkout';
-    if (path.includes('/checkouts')) return 'Create Checkout';
+    // Support both /checkouts (agent) and /checkout-sessions (merchant UCP)
+    if ((path.includes('/checkouts') || path.includes('/checkout-sessions')) && path.includes('/complete')) return 'Complete Checkout';
+    if ((path.includes('/checkouts') || path.includes('/checkout-sessions')) && path.includes('/cancel')) return 'Cancel Checkout';
+    if (path.includes('/checkouts/') || path.includes('/checkout-sessions/')) return path.includes('PUT') ? 'Update Checkout' : 'Get Checkout';
+    if (path.includes('/checkouts') || path.includes('/checkout-sessions')) return 'Create Checkout';
     if (path.includes('/payment/setup-intent')) return 'Setup Intent';
     if (path.includes('/payment/save-method')) return 'Save Payment Method';
     if (path.includes('/payment/create-spt')) return 'Create SPT';

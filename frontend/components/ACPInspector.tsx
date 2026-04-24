@@ -98,7 +98,7 @@ export default function ACPInspector({ isOpen, onToggle }: ACPInspectorProps) {
       <span className={`transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>
         ›
       </span>
-      <span>ACP Inspector</span>
+      <span>UCP Inspector</span>
       {entries.length > 0 && (
         <span className="bg-emerald-600 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">
           {entries.length}
@@ -123,7 +123,7 @@ export default function ACPInspector({ isOpen, onToggle }: ACPInspectorProps) {
             className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors"
           >
             <span className="rotate-90">›</span>
-            <span className="font-semibold text-emerald-400">ACP Inspector</span>
+            <span className="font-semibold text-emerald-400">UCP Inspector</span>
           </button>
           
           {/* Filter Tabs */}
@@ -157,7 +157,7 @@ export default function ACPInspector({ isOpen, onToggle }: ACPInspectorProps) {
         {filteredEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-600 p-4">
             <span className="text-2xl mb-2">📡</span>
-            <p className="text-xs">No ACP requests yet</p>
+            <p className="text-xs">No UCP requests yet</p>
             <p className="text-[10px] text-gray-700 mt-1">Start a chat to see requests</p>
           </div>
         ) : (
@@ -276,7 +276,7 @@ export function ACPInspectorToggle({
       <span className={`transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>
         ›
       </span>
-      <span>ACP Inspector</span>
+      <span>UCP Inspector</span>
       {entryCount > 0 && (
         <span className="bg-emerald-600 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">
           {entryCount}
