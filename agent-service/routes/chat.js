@@ -507,6 +507,22 @@ router.post('/', async (req, res) => {
       }
     }
     
+    // Check if user has payment methods in Stripe (fallback for profile.paymentMethodId)
+    // This handles the case where a card was saved via Stripe but not synced to userProfile
+    let hasStripePaymentMethod = false;
+    if (sessionCustomerId) {
+      try {
+        const paymentMethods = await getCustomerPaymentMethods(sessionCustomerId);
+        hasStripePaymentMethod = paymentMethods && paymentMethods.length > 0;
+        if (hasStripePaymentMethod) {
+          console.log('   💳 Stripe payment method found for session customer');
+        }
+      } catch (err) {
+        // Ignore errors - just means we can't check Stripe
+        console.log('   ⚠️ Could not check Stripe payment methods:', err.message);
+      }
+    }
+    
     // Context for function execution (includes merchantUrl for workshop mode)
     const context = {
       userEmail,
@@ -539,6 +555,7 @@ router.post('/', async (req, res) => {
           products,
           aiPersona,
           userProfile,
+          hasStripePaymentMethod,
           lambdaEndpoint: effectiveLambdaEndpoint
         });
         

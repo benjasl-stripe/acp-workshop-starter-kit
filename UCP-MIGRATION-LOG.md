@@ -157,3 +157,13 @@ const paymentIntent = await stripe.paymentIntents.create({
 });
 ```
 
+### 21. Fix: Profile "Complete" Status - Check Stripe as Fallback
+**Files:** `agent-service/routes/chat.js`, `agent-service/lib/openai.js`, `agent-service/routes/profile.js`
+
+**Problem:** The AI prompt used only `userProfile.paymentMethodId` to determine if payment was set up. But cards saved via Stripe (using `sessionCustomerId`) don't always sync to `userProfile.paymentMethodId`, causing the AI to repeatedly ask for payment info even when a card is on file.
+
+**Fix:** 
+1. In `chat.js`: Check Stripe for payment methods using `sessionCustomerId` before the AI loop
+2. In `openai.js`: Use `userProfile.paymentMethodId || hasStripePaymentMethod` for `hasPayment`
+3. In `profile.js`: `/check` endpoint now accepts optional `sessionCustomerId` query param to check Stripe
+

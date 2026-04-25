@@ -464,13 +464,8 @@ export default function ChatInterface() {
         <div className="bg-gradient-to-r from-purple-600 to-indigo-700 text-white p-5 text-center">
           <div className="flex items-center justify-center gap-3 mb-1">
             <h1 className="text-2xl font-bold">🤖 UCP + SPT Demo</h1>
-            {mounted && getConfig().testMode && (
-              <span className="text-xs bg-yellow-400 text-gray-900 px-2 py-0.5 rounded-full font-bold">
-                TEST
-              </span>
-            )}
           </div>
-          <p className="text-xs opacity-80">Agentic Commerce Protocol with Stripe Shared Payment Tokens</p>
+          <p className="text-xs opacity-80">Universal Commerce Protocol with Stripe Shared Payment Tokens</p>
           
           {/* Status Row - only render after mounted to avoid hydration mismatch */}
           {mounted && (
