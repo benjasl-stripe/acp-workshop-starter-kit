@@ -268,13 +268,22 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
                   placeholder="John Doe"
                 />
               </div>
-              <button
-                onClick={handleSavePersonalInfo}
-                disabled={isSaving}
-                className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : 'Save Info'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSavePersonalInfo}
+                  disabled={isSaving}
+                  className="flex-1 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : 'Save Info'}
+                </button>
+                <button
+                  onClick={() => setProfile({ ...profile, email: 'jenny.rosen@example.com', name: 'Jenny Rosen' })}
+                  className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                  title="Fill with test data"
+                >
+                  Autofill
+                </button>
+              </div>
             </div>
           )}
 
@@ -348,13 +357,29 @@ export default function ProfileSettings({ isOpen, onClose, onProfileUpdate, init
                   </select>
                 </div>
               </div>
-              <button
-                onClick={handleSaveAddress}
-                disabled={isSaving}
-                className="w-full py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : 'Save Address'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveAddress}
+                  disabled={isSaving}
+                  className="flex-1 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {isSaving ? 'Saving...' : 'Save Address'}
+                </button>
+                <button
+                  onClick={() => setAddressForm({
+                    line_one: '354 Oyster Point Blvd',
+                    line_two: '',
+                    city: 'South San Francisco',
+                    state: 'CA',
+                    postal_code: '94080',
+                    country_code: 'US',
+                  })}
+                  className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                  title="Fill with test address"
+                >
+                  Autofill
+                </button>
+              </div>
               {profile.address && (
                 <div className="mt-4 p-3 bg-green-900/30 border border-green-700 rounded-lg">
                   <div className="text-green-400 text-sm font-medium">✅ Address Saved</div>
