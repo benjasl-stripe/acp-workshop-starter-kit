@@ -30,8 +30,10 @@ export default function ProductCard({ product, onClick }: ProductCardProps) {
     : product.price;
 
   // Build the full image URL if product has an image
-  const imageUrl = product.image 
-    ? `${getMerchantBaseUrl()}${product.image}`
+  // Supports both 'image' (relative path) and 'thumbnail' (full or relative URL)
+  const rawImage = product.image || product.thumbnail;
+  const imageUrl = rawImage
+    ? (rawImage.startsWith('http') ? rawImage : `${getMerchantBaseUrl()}${rawImage}`)
     : null;
 
   const handleEnlargeClick = (e: React.MouseEvent) => {

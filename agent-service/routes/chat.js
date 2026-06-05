@@ -15,7 +15,7 @@ import {
 import { createSPT, getCustomerPaymentMethods } from './payment.js';
 import { profiles } from './profile.js';
 import { getPendingLogs } from '../lib/ucp-call-logger.js';
-import { createChatCompletion } from '../lib/openai.js';
+import { createChatCompletion, isAIConfigured } from '../lib/ai-provider.js';
 
 const router = express.Router();
 
@@ -453,9 +453,9 @@ router.post('/', async (req, res) => {
     console.log('   Products URL:', productsApiUrl || '❌ NOT SET');
     console.log('   Lambda:', effectiveLambdaEndpoint || 'not set');
     
-    // Check if Lambda AI service is configured
-    if (!effectiveLambdaEndpoint) {
-      console.log('⚠️ Lambda endpoint not configured, using fallback');
+    // Check if any AI service is configured (OpenRouter or Lambda)
+    if (!isAIConfigured() && !effectiveLambdaEndpoint) {
+      console.log('⚠️ No AI provider configured, using fallback');
       return res.json({
         content: generateFallbackResponse(messages[messages.length - 1]?.content || ''),
         checkoutState,

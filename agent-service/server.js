@@ -13,12 +13,19 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import chatRouter from './routes/chat.js';
 import checkoutRouter from './routes/checkout.js';
 import paymentRouter from './routes/payment.js';
 import profileRouter from './routes/profile.js';
+import { getProviderName } from './lib/ai-provider.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load local .env first, then parent .env (Stripe Projects) for OPENROUTER_API_KEY
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: false });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -102,6 +109,7 @@ app.listen(PORT, () => {
   
   // Log environment configuration
   console.log(`\n📋 Environment Configuration:`);
+  console.log(`   🧠 AI Provider: ${getProviderName()}`);
   console.log(`   LAMBDA_ENDPOINT: ${process.env.LAMBDA_ENDPOINT || '❌ Not set'}`);
   console.log(`   STRIPE_PROXY_URL: ${process.env.STRIPE_PROXY_URL || '❌ Not set (defaulting to http://localhost:3002)'}`);
   console.log(`   MERCHANT_API_URL: ${process.env.MERCHANT_API_URL || '❌ Not set (will use frontend config)'}`);

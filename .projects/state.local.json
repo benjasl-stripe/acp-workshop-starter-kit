@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "project": {
+    "initializedAt": "2026-06-05T03:15:17.843Z",
+    "merchantDisplayName": null,
+    "merchantId": "acct_1TdvHoAHWuLXIZ36",
+    "projectId": "project_61UoCBRHnmZ7TdDFv16UnJFA1ASQPm3cWejUZAGYqJXE",
+    "projectName": "agentic-commerce-workshop-starter-kit"
+  },
+  "providers": {
+    "openrouter": {
+      "accountRequestId": "facctrq_61UoCBzKxTNiM8sOX16UnJFA1ASQPm3cWejUZAGYq9iK",
+      "configuration": {},
+      "linkedAt": "2026-06-05T03:15:52.827Z",
+      "providerId": "prvdr_61URImmFACEuDHEx651IO",
+      "providerName": "OpenRouter",
+      "redirectUrl": null,
+      "requestedAt": "2026-06-05T03:15:52.827Z",
+      "status": "complete"
+    }
+  },
+  "resources": {
+    "openrouter-api": {
+      "configuration": {},
+      "createdAt": "2026-06-05T03:15:54.948Z",
+      "lastRevealedAt": "2026-06-05T03:15:55.134Z",
+      "lastStatus": "complete",
+      "name": "openrouter-api",
+      "providerId": "prvdr_61URImmFACEuDHEx651IO",
+      "providerName": "OpenRouter",
+      "resourceId": "fres_61UoCC1VE3I2awE5816UnJFA1ASQPm3cWejUZAGYqBGS",
+      "serviceId": "api"
+    }
+  }
+}
