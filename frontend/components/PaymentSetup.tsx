@@ -8,8 +8,8 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
-import { getStripeConfig, createSetupIntent, savePaymentMethod } from '@/lib/api';
-import { getConfig, getOrCreateCustomerId, getUserEmail } from '@/lib/config';
+import { getStripeConfig, createSetupIntent, savePaymentMethod, getPaymentMethods } from '@/lib/api';
+import { getConfig, getOrCreateCustomerId } from '@/lib/config';
 
 interface PaymentSetupProps {
   onSuccess: (paymentMethodId: string, last4?: string) => void;
@@ -17,7 +17,6 @@ interface PaymentSetupProps {
   email?: string;
 }
 
-// Payment Element appearance customization
 const appearance: Appearance = {
   theme: 'stripe',
   variables: {
@@ -27,81 +26,58 @@ const appearance: Appearance = {
     colorDanger: '#ef4444',
     fontFamily: 'system-ui, -apple-system, sans-serif',
     borderRadius: '8px',
-    spacingUnit: '4px',
   },
   rules: {
-    '.Input': {
-      border: '2px solid #e5e7eb',
-      boxShadow: 'none',
-    },
-    '.Input:focus': {
-      border: '2px solid #7c3aed',
-      boxShadow: '0 0 0 1px #7c3aed',
-    },
-    '.Label': {
-      fontWeight: '500',
-      marginBottom: '6px',
-    },
+    '.Input': { border: '2px solid #e5e7eb', boxShadow: 'none' },
+    '.Input:focus': { border: '2px solid #7c3aed', boxShadow: '0 0 0 1px #7c3aed' },
+    '.Label': { fontWeight: '500', marginBottom: '6px' },
   },
 };
 
-// Inner form component that uses Stripe hooks
 function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
-  // TODO: Use the useStripe() and useElements() hooks
-  const stripe = null;    // Replace with: useStripe();
-  const elements = null;  // Replace with: useElements();
-
+  const stripe = useStripe();
+  const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
+    if (!stripe || !elements) return;
+    
     setIsLoading(true);
     setError(null);
-
+    
     try {
-      // TODO: Confirm the SetupIntent with the PaymentElement
-      const submitError = { message: 'TODO: Implement confirmSetup' };
-      const setupIntent = null;
-
-      // Replace the above with:
-      // const { error: submitError, setupIntent } = await stripe.confirmSetup({
-      //   elements,
-      //   confirmParams: {
-      //     return_url: window.location.href,
-      //   },
-      //   redirect: 'if_required',
-      // });
-
+      const { error: submitError, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: 'if_required',
+      });
+      
       if (submitError) {
         setError(submitError.message || 'Failed to save payment method');
         return;
       }
-
+      
       if (setupIntent && setupIntent.payment_method) {
-        // TODO: Save the payment method to the Agent backend
-        // Uncomment the code below:
+        const customerId = getOrCreateCustomerId();
+        const paymentMethodId = typeof setupIntent.payment_method === 'string' 
+          ? setupIntent.payment_method 
+          : setupIntent.payment_method.id;
 
-        // // Always use session customer ID (GUID-based, not email)
-        // // Email is separate profile info for receipts only
-        // const customerId = getOrCreateCustomerId();
-        // const paymentMethodId = typeof setupIntent.payment_method === 'string'
-        //   ? setupIntent.payment_method
-        //   : setupIntent.payment_method.id;
-        //
-        // // Extract last4 from payment method if available
-        // const last4 = typeof setupIntent.payment_method === 'object'
-        //   ? setupIntent.payment_method.card?.last4
-        //   : undefined;
-        //
-        // console.log('💳 Saving payment method for session customer:', customerId);
-        // await savePaymentMethod(customerId, paymentMethodId);
-        // onSuccess(paymentMethodId, last4);  // ← Pass last4 to update profile display
+        await savePaymentMethod(customerId, paymentMethodId);
+        
+        // Fetch last4 for display
+        let last4: string | undefined;
+        try {
+          const { paymentMethods } = await getPaymentMethods(customerId);
+          const savedMethod = paymentMethods.find(pm => pm.id === paymentMethodId);
+          last4 = savedMethod?.last4;
+        } catch (err) {
+          console.log('Could not fetch payment method details');
+        }
+        
+        onSuccess(paymentMethodId, last4);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -111,24 +87,24 @@ function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-        <PaymentElement
-          options={{
-            layout: 'accordion',
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement 
+        options={{
+          layout: {
+            type: 'accordion',
             defaultCollapsed: false,
             radios: true,
             spacedAccordionItems: true,
-         }}
-        />
-      </div>
-
+          },
+        }}
+      />
+      
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
           {error}
         </div>
       )}
-
+      
       <div className="flex gap-3">
         <button
           type="submit"
@@ -150,7 +126,6 @@ function SetupForm({ onSuccess, onCancel, email }: PaymentSetupProps) {
   );
 }
 
-// Main component that loads Stripe and creates SetupIntent
 export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetupProps) {
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -160,11 +135,9 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
   useEffect(() => {
     const init = async () => {
       try {
-        // Get Stripe publishable key from config
         const appConfig = getConfig();
         let publishableKey = appConfig.stripePublishableKey;
-
-        // If not in config, try to get from agent service
+        
         if (!publishableKey) {
           try {
             const stripeConfig = await getStripeConfig();
@@ -173,32 +146,25 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
             console.log('Could not fetch Stripe config from agent');
           }
         }
-
+        
         if (!publishableKey) {
-          setError('Stripe not configured. Add Stripe Publishable Key in Settings.');
+          setError('Stripe not configured.');
           setIsLoading(false);
           return;
         }
-
-        // TODO: Load Stripe with the publishable key
-        setStripePromise(null); // Replace with: setStripePromise(loadStripe(publishableKey));
-
-        // TODO: Create a SetupIntent and get the clientSecret
-        setClientSecret(null);
-        // Replace with:
-        // // Always use session customer ID (GUID-based, auto-generated)
-        // const customerId = getOrCreateCustomerId();
-        // console.log('🆔 Creating SetupIntent for session customer:', customerId);
-        // const setupIntent = await createSetupIntent(customerId);
-        // setClientSecret(setupIntent.clientSecret);
-
+        
+        setStripePromise(loadStripe(publishableKey));
+        
+        const customerId = getOrCreateCustomerId();
+        const setupIntent = await createSetupIntent(customerId);
+        setClientSecret(setupIntent.clientSecret);
       } catch (err: any) {
         setError(err.message || 'Failed to initialize payment');
       } finally {
         setIsLoading(false);
       }
     };
-
+    
     init();
   }, [email]);
 
@@ -218,10 +184,7 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
       <div className="bg-white p-6 rounded-2xl shadow-lg">
         <div className="text-center">
           <p className="text-red-600 mb-4">❌ {error}</p>
-          <button
-            onClick={onCancel}
-            className="px-6 bg-gray-300 text-gray-700 font-bold py-2 rounded-lg hover:bg-gray-400"
-          >
+          <button onClick={onCancel} className="px-6 bg-gray-300 text-gray-700 font-bold py-2 rounded-lg hover:bg-gray-400">
             Close
           </button>
         </div>
@@ -240,30 +203,14 @@ export default function PaymentSetup({ onSuccess, onCancel, email }: PaymentSetu
   }
 
   return (
-    <div className="flex max-h-[85vh] flex-col overflow-hidden rounded-2xl bg-white p-6 shadow-lg">
-      <h3 className="mb-4 text-lg font-bold text-gray-800">💳 Add Payment Method</h3>
-      <p className="mb-4 text-sm text-gray-600">
-        Choose your preferred payment method.
-      </p>
-
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* TODO: Wrap SetupForm with Elements provider */}
-        {/* Include clientSecret and appearance in options */}
+    <div className="bg-white p-6 rounded-2xl shadow-lg">
+      <h3 className="text-lg font-bold text-gray-800 mb-4">💳 Add Payment Method</h3>
+      <p className="text-sm text-gray-600 mb-4">Choose your preferred payment method.</p>
+      
+      <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
         <SetupForm onSuccess={onSuccess} onCancel={onCancel} email={email} />
-
-        {/* Replace above with:
-        <Elements
-          stripe={stripePromise}
-          options={{
-            clientSecret,
-            appearance,
-          }}
-        >
-          <SetupForm onSuccess={onSuccess} onCancel={onCancel} email={email} />
-        </Elements>
-        */}
-      </div>
-
+      </Elements>
+      
       <p className="text-xs text-gray-500 mt-4 text-center">
         🔒 Secured by Stripe. Your payment details are never stored on our servers.
       </p>

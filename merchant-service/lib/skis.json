@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": "SKI-001",
+    "title": "Blizzard Rustler 10",
+    "price": 749,
+    "currency": "USD",
+    "description": "Versatile all-mountain ski perfect for groomers, trees, and variable conditions. Great for intermediate to expert skiers.",
+    "category": "Skis",
+    "brand": "Blizzard",
+    "inStock": false,
+    "stock": 0
+  },
+  {
+    "id": "SKI-002",
+    "title": "Atomic Bent 100",
+    "price": 699,
+    "currency": "USD",
+    "description": "Playful freestyle ski that excels in the park and on natural features. Designed for creative skiers who like to have fun.",
+    "category": "Skis",
+    "brand": "Atomic",
+    "inStock": false,
+    "stock": 0
+  },
+  {
+    "id": "SKI-003",
+    "title": "Salomon QST 98",
+    "price": 649,
+    "currency": "USD",
+    "description": "Lightweight all-mountain ski with excellent edge grip.",
+    "category": "Skis",
+    "brand": "Salomon",
+    "inStock": true,
+    "stock": 15
+  }
+]
