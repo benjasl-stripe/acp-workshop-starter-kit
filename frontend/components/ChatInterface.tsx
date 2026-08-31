@@ -97,6 +97,7 @@ export default function ChatInterface() {
   // Products are populated from LLM responses only (not fetched directly from API)
   const [products, setProducts] = useState<Product[]>([]);
   const [checkoutState, setCheckoutState] = useState<CheckoutState | null>(null);
+  const checkoutStateRef = useRef<CheckoutState | null>(null);
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [showProfileSettings, setShowProfileSettings] = useState(false);
@@ -165,6 +166,11 @@ export default function ChatInterface() {
     }
     setHasLoadedFromStorage(true);
   }, [mounted]);
+
+  // Keep checkout ref in sync so handleSubmit always has the latest value
+  useEffect(() => {
+    checkoutStateRef.current = checkoutState;
+  }, [checkoutState]);
 
   // Persist chat whenever state changes (only after initial load to prevent race condition)
   useEffect(() => {
@@ -327,35 +333,35 @@ export default function ChatInterface() {
     try {
       // AI-driven chat flow - Agent Service handles all UCP calls via function calling
       // Products are fetched by the agent from the configured API, not passed from frontend
-      const response = await sendChatMessage(newMessages, undefined, checkoutState);
-      
-      // Update checkout state if changed
-      if (response.checkoutState) {
-        // Check if this is a NEW checkout (different ID) - if so, replace completely
-        const isNewCheckout = !checkoutState || response.checkoutState.id !== checkoutState.id;
-        console.log('🛒 Checkout from API:', {
-          isNew: isNewCheckout,
-          id: response.checkoutState.id,
-          items: response.checkoutState.line_items?.map(i => `${i.title} (${i.id})`) || [],
-          status: response.checkoutState.status
+      // Use ref to always get the latest checkout state (avoids stale closures)
+      const response = await sendChatMessage(newMessages, undefined, checkoutStateRef.current);
+
+      // Update checkout state from response, or preserve existing
+      const newCheckout = response.checkoutState || checkoutStateRef.current;
+
+      if (newCheckout) {
+        console.log('🛒 Checkout state:', {
+          fromResponse: !!response.checkoutState,
+          id: newCheckout.id,
+          items: newCheckout.line_items?.map((i: any) => `${i.title} (${i.id})`) || [],
+          status: newCheckout.status
         });
-        
-        // Check if order is finalized (completed or cancelled)
-        const isFinalized = response.checkoutState.status === 'completed' || 
-                           response.checkoutState.status === 'cancelled';
-        
+
+        // Check if order is finalized (completed or canceled)
+        const isFinalized = newCheckout.status === 'completed' ||
+                           newCheckout.status === 'canceled' ||
+                           newCheckout.status === 'cancelled';
+
         if (isFinalized) {
-          // Save to Sales tab if completed
-          if (response.checkoutState.status === 'completed') {
-            saveCompletedOrder(response.checkoutState);
+          if (newCheckout.status === 'completed') {
+            saveCompletedOrder(newCheckout);
           }
-          // Clear the basket after a short delay so user sees the confirmation
-          console.log('🧹 Clearing basket - order finalized:', response.checkoutState.status);
+          console.log('🧹 Clearing basket - order finalized:', newCheckout.status);
           setTimeout(() => {
             setCheckoutState(null);
           }, 1000);
         } else {
-          setCheckoutState(response.checkoutState);
+          setCheckoutState(newCheckout);
         }
       }
       
